@@ -88,7 +88,11 @@
   (if (> a b)
     null-value
     (combiner (term a)
-              (accumulate combiner null-value term a next b))))
+              (accumulate combiner
+                          null-value
+                          term
+                          (next a)
+                          next b))))
 
 (defn accumulative-sum
   [term a next b]
@@ -100,6 +104,34 @@
 
 ; Exercise 1.33
 
+(defn filtered-accumulate
+  [combiner null-value term a next b predicate?]
+  (if (> a b)
+    null-value
+    (combiner (let [a' (term a)]
+                (if (predicate? a') a' null-value))
+              (filtered-accumulate combiner
+                                   null-value
+                                   term
+                                   (next a)
+                                   next
+                                   b
+                                   predicate?))))
+
+; b)
+
+(defn production-of-relative-primes [n]
+  (letfn [(rel-prime? [x] (= 1 (math/gcd x n)))]
+    (filtered-accumulate * 1 identity 1 inc (dec n) rel-prime?)))
+
+(production-of-relative-primes 10)
 
 
+; Exercise 1.35
 
+;; (defn fixed-ppoint [f first-guess]
+;;   (let [tolerance 0.00001
+;;         close-enough? (fn [v1 v2]
+;;                         (< (math/abs (- v1 v2)) tolerance))
+;;         try-guess (fn)]
+;;     ))
