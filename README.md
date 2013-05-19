@@ -1,13 +1,10 @@
-# sicp
+# SICP
 
-A Clojure library designed to ... well, that part is up to you.
-
-## Usage
-
-FIXME
+This is my answers to some of the exercises in *Structured and Interpretation
+of Computer Programs* (SICP). The code is written in Clojure.
 
 ## License
 
-Copyright © 2013 FIXME
+[Creative Commons Attribution License](cc)
 
-Distributed under the Eclipse Public License, the same as Clojure.
+[cc]: http://creativecommons.org/licenses/by/3.0/us/
