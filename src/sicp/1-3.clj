@@ -1,12 +1,12 @@
-; 1.3 Formulating Abstractions with Higher-Order Procedures
-; =========================================================
+;;;; 1.3 Formulating Abstractions with Higher-Order Procedures
+;;;; =========================================================
 
-; Namespace and dependencies
+;;; Namespace and dependencies
 
 (ns sicp.1-3
   (:require [clojure.math.numeric-tower :as math]))
 
-; Newton Integral
+;;; Newton Integral
 
 (defn sum [term a next b]
   (if (> a b)
@@ -25,7 +25,8 @@
 (newton-integral cube 0 1 0.01)
 (newton-integral cube 0 1 0.001)
 
-; Exercise 1.29
+
+;;; Exercise 1.29
 
 (defn simpson-integral [f a b n]
   (let [h    (/ (- b a) n)
@@ -39,7 +40,8 @@
 (simpson-integral cube 0 1 100)
 (simpson-integral cube 0 1 1000)
 
-; Exercise 1.30
+
+;;; Exercise 1.30
 
 (defn iterative-sum [term a next b]
   (loop [a a, result 0]
@@ -48,9 +50,10 @@
       (recur (next a)
              (+ (term a) result)))))
 
-; Exercise 1.31
 
-; a)
+;;; Exercise 1.31
+
+;;; a)
 
 (defn product [term a next b]
   (if (> a b)
@@ -72,7 +75,7 @@
 
 (* 4 (john-wallis 100))
 
-; b)
+;;; b)
 
 (defn iterative-product [term a next b]
   (loop [a a, result 1]
@@ -81,7 +84,8 @@
       (recur (next a)
              (* (term a) result)))))
 
-; Exercise 1.32
+
+;;; Exercise 1.32
 
 (defn accumulate
   [combiner null-value term a next b]
@@ -102,7 +106,8 @@
   [term a next b]
   (accumulate * 1 term a next b))
 
-; Exercise 1.33
+
+;;; Exercise 1.33
 
 (defn filtered-accumulate
   [combiner null-value term a next b predicate?]
@@ -118,7 +123,7 @@
                                    b
                                    predicate?))))
 
-; b)
+;;; b)
 
 (defn production-of-relative-primes [n]
   (letfn [(rel-prime? [x] (= 1 (math/gcd x n)))]
@@ -127,7 +132,7 @@
 (production-of-relative-primes 10)
 
 
-; Exercise 1.35
+;;; Exercise 1.35
 
 (defn fixed-point [f first-guess]
   (let [tolerance 0.00001
@@ -143,7 +148,8 @@
 
 (fixed-point #(+ 1 (/ 1 %)) 1.0)
 
-; Exercise 1.36
+
+;;; Exercise 1.36
 
 (defn fixed-point' [f first-guess]
   (let [tolerance 0.00001
@@ -157,19 +163,20 @@
                    (! next (inc steps)))))]
     (try' first-guess 0)))
 
-; utility functions
+;;; utility functions
 
 (defn log [x] (Math/log x))
 (defn average [& lst] (/ (reduce + lst) (count lst)))
 
-; compare steps
+;;; compare steps
 
 (fixed-point' #(/ (log 1000) (log %)) 4)
 (fixed-point' #(average % (/ (log 1000) (log %))) 4)
 
-; Exercise 1.37
 
-; a)
+;;; Exercise 1.37
+
+;;; a)
 
 (defn cont-frac [n d k]
   (letfn [(f [i]
@@ -181,7 +188,7 @@
 
 (cont-frac (fn [x] 1.0) (fn [x] 1.0) 30)
 
-; b)
+;;; b)
 
 (defn iterative-cont-frac [n d k]
   (loop [i k, result 0]
@@ -190,11 +197,12 @@
       (recur (dec i)
              (/ (n i) (+ (d i) result))))))
 
-; Test out `iterative-cont-frac`
+;; try out `iterative-cont-frac`
 
 (iterative-cont-frac (fn [x] 1.0) (fn [x] 1.0) 30)
 
-; Exercise 1.38
+
+;;; Exercise 1.38
 
 (letfn [(n [_] 1.0)
         (d [i]
@@ -203,7 +211,8 @@
              1))]
   (iterative-cont-frac n d 20))
 
-; Exercie 1.40
+
+;;; Exercise 1.40
 
 (defn deriv [g]
   (let [dx 0.00001]
@@ -227,19 +236,22 @@
 
 (newtons-method (cubic 1 1 -3) 0.0)
 
-; Exercise 1.41
+
+;;; Exercise 1.41
 
 (defn double [f] #(f (f %)))
 
 (((double (double double)) inc) 5)
 
-; Exercise 1.42
+
+;;; Exercise 1.42
 
 (defn compose [f g] #(f (g %)))
 
 ((compose square inc) 6)
 
-; Exercise 1.43
+
+;;; Exercise 1.43
 
 (defn repeated [f n]
   (if (= n 1)
@@ -248,7 +260,8 @@
 
 ((repeated square 2) 5)
 
-; Exercise 1.44
+
+;;; Exercise 1.44
 
 (defn smooth [f]
   (let [dx 0.00001]
@@ -262,7 +275,8 @@
 
 ((repeated-smooth square 10) 5)
 
-; Exercise 1.45
+
+;;; Exercise 1.45
 
 (defn average-damp [f] #(average % (f %)))
 (defn repeated-average-damp [f n] ((repeated average-damp n) f))
@@ -274,7 +288,7 @@
 
 (damped-nth-root 2 2 1)
 
-; damp-times is lg(n)
+;;; damp-times is lg(n)
 
 (defn lg [n] (math/ceil (/ (log n) (log 2))))
 
@@ -284,7 +298,8 @@
 
 (nth-root 10 (math/expt 3 10))
 
-; Exercise 1.46
+
+;;; Exercise 1.46
 
 (defn iterative-improve [good-enough? improve]
   (fn [first-guess]

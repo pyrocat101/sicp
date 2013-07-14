@@ -1,12 +1,12 @@
-; 2.2 Hierarchical Data and the Closure Property
-; ==============================================
+;;;; 2.2 Hierarchical Data and the Closure Property
+;;;; ==============================================
 
-; Namespace and dependencies
+;;; Namespace and dependencies
 
 (ns sicp.2-2
   (:require [clojure.math.numeric-tower :as math]))
 
-; math shortcuts
+;;; Math shortcuts
 
 (def abs  math/abs)
 (def gcd  math/gcd)
@@ -16,7 +16,7 @@
 (defn cube [x] (math/expt x 3))
 
 
-; Exercise 2.17
+;;; Exercise 2.17
 
 (defn last-pair [items]
   (let [rest (rest items)]
@@ -27,7 +27,7 @@
 (last-pair (list 23 72 149 34))
 
 
-; Exercise 2.18
+;;; Exercise 2.18
 
 (defn reverse' [items]
   (loop [reversed nil remain items]
@@ -41,7 +41,7 @@
 (reverse' '(1 4 9 16 25))
 
 
-; Exercise 2.19
+;;; Exercise 2.19
 
 (def us-coins (list 50 25 10 5 1))
 (def uk-coins (list 100 50 20 10 5 2 1 0.5))
@@ -59,15 +59,15 @@
                         (first-denomination coin-values))
                      coin-values))))
 
-; test drive
+;; test drive
 (cc 100 us-coins)
 ;; (cc 100 uk-coins)
-; order of values does not matter
+;; order of values does not matter
 (cc 100 (reverse us-coins))
 ;; (cc 100 (reverse uk-coins))
 
 
-; Exercise 2.20
+;;; Exercise 2.20
 
 (defn same-parity [& items]
   (if (odd? (first items))
@@ -78,7 +78,7 @@
 (same-parity 2 3 4 5 6 7)
 
 
-; Exercise 2.21
+;;; Exercise 2.21
 
 (defn square-list-1 [items]
   (if (empty? items)
@@ -92,7 +92,7 @@
 (square-list-2 '(1 2 3 4))
 
 
-; Exercise 2.22
+;;; Exercise 2.22
 
 (defn iterative-square-list [items]
   (loop [things (reverse items) answer nil]
@@ -105,7 +105,7 @@
 (iterative-square-list '(1 2 3 4))
 
 
-; Exercise 2.23
+;;; Exercise 2.23
 
 (defn for-each [f items]
   (if-not (empty? items)
@@ -116,7 +116,7 @@
 ;; (for-each println '(57 321 88))
 
 
-; Exercise 2.25
+;;; Exercise 2.25
 
 (def car first)
 (def cdr rest)
@@ -130,7 +130,7 @@
 (nth (iterate cadr '(1 (2 (3 (4 (5 (6 7))))))) 6)
 
 
-; Exercise 2.27
+;;; Exercise 2.27
 
 (defn deep-reverse [items]
   (loop [reversed nil remain items]
@@ -146,7 +146,7 @@
 (deep-reverse '((1 2) (3 4)))
 
 
-; Exercise 2.28
+;;; Exercise 2.28
 
 (defn fringe [tree]
   (cond (= tree '()) []
@@ -157,7 +157,7 @@
 (fringe '((1 2) (3 4)))
 
 
-; Exercise 2.30
+;;; Exercise 2.30
 
 (defn square-tree-1 [tree]
   (cond (= tree '()) '()
@@ -175,7 +175,7 @@
 (square-tree-2 '(1 (2 (3 4) 5 (6 7))))
 
 
-; Exercise 2.31
+;;; Exercise 2.31
 
 (defn tree-map [f tree]
   (map (fn [sub-tree]
@@ -188,7 +188,7 @@
 (square-tree-3 '(1 (2 (3 4) 5 (6 7))))
 
 
-; Exercise 2.32
+;;; Exercise 2.32
 
 (defn append [list1 list2]
   (if (empty? list1)
@@ -204,7 +204,7 @@
 (subsets '(1 2 3))
 
 
-; Exercise 2.33
+;;; Exercise 2.33
 
 (defn accumulate [op initial sequence]
   (if (empty? sequence)
@@ -224,7 +224,7 @@
 (length' '(1 2 3 4 5))
 
 
-; Exercise 2.34
+;;; Exercise 2.34
 
 (defn horner-eval [x coefficient-sequence]
   (accumulate (fn [this-coeff higher-terms]
@@ -235,7 +235,7 @@
 (horner-eval 2 (list 1 3 0 5 0 1))
 
 
-; Exercise 2.35
+;;; Exercise 2.35
 
 (defn count-leaves [t]
   (accumulate +
@@ -248,7 +248,7 @@
 (count-leaves '((1 2) (3 4)))
 
 
-; Exercise 2.36
+;;; Exercise 2.36
 
 (defn accumulate-n [op init seqs]
   (if (= (first seqs) '())
@@ -261,7 +261,7 @@
                     (10 11 12)))
 
 
-; Exercise 2.37
+;;; Exercise 2.37
 
 (defn dot-product [v w]
   (accumulate + 0 (map * v w)))
@@ -285,12 +285,12 @@
 (matrix-*-matrix m (transpose m))
 
 
-; Exercise 2.38
+;;; Exercise 2.38
 
-; `op` must be commutative
+;;; `op` must be commutative
 
 
-; Exercise 2.39
+;;; Exercise 2.39
 
 (def fold-right accumulate)
 (defn fold-left [op initial sequence]
@@ -309,7 +309,7 @@
 (reverse-fold-left '(1 2 3 4 5))
 
 
-; Exercise 2.40
+;;; Exercise 2.40
 
 (defn enumerate-interval [low high]
   (range low (inc high)))
@@ -347,7 +347,7 @@
 (prime-sum-pairs 6)
 
 
-; Exercise 2.41
+;;; Exercise 2.41
 
 (defn unique-triples [n]
   (flatmap (fn [i]
@@ -361,7 +361,7 @@
 (unique-triples-sum-equal-to 10)
 
 
-; Exercise 2.42
+;;; Exercise 2.42
 
 (def empty-board '())
 
