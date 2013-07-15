@@ -17,7 +17,7 @@
 (def caddr (comp car cddr))
 (def cadar (comp car cdar))
 (def cdddr (comp cdr cddr))
-
+(def null? (comp not seq))
 
 ;;; Exercise 2.54
 
@@ -130,15 +130,91 @@
 (deriv '(* x y (+ x 3)) 'x)
 
 
+;;; Exercise 2.59
+
+(defn element-of-set? [x set]
+  (cond (null? set) false
+        (= x (car set)) true
+        :else (recur x (cdr set))))
+
+(defn adjoin-set [x set]
+  (if (element-of-set? x set)
+    set
+    (cons x set)))
+
+(defn intersection-set [set1 set2]
+  (cond (or (null? set1) (null? set2)) '()
+        ;;
+        (element-of-set? (car set1) set2)
+        (cons (car set1) (intersection-set (cdr set1) set2))
+        ;;
+        :else (recur (cdr set1) set2)))
+
+(defn union-set [set1 set2]
+  (cond (or (null? set1) (null? set2)) '()
+        (element-of-set? (car set1) set2) (recur (cdr set1) set2)
+        :else (cons (car set1) (union-set (cdr set1) set2))))
 
 
+;;; Exercise 2.60
+
+;; most functions remains unmodified
+(def elements-of-dup-set? element-of-set?)
+(def adjoin-dup-set cons)
+(def union-dup-set concat)
+(def intersection-dup-set intersection-set)
+
+;; try out
+(intersection-dup-set '(2 3 2 1 3 2 2) '(1 2))
+(union-dup-set '(2 3 2 1 3 2 2) '(3 4))
+
+;;; For scenarios that frequently adjoins new elements into the set
+;;; or unions two sets, this representation is more efficient.
 
 
+;;; Exercise 2.61
+
+(defn elements-of-sorted-set? [x set]
+  (cond (null? set)     false
+        (= x (car set)) true
+        (< x (car set)) false
+        :else           (recur x (cdr test))))
+
+(defn adjoin-sorted-set [x set]
+  (cond (null? set)     (list x)
+        (= x (car set)) set
+        (< x (car set)) (cons x set)
+        :else           (cons (car set)
+                              (adjoin-sorted-set x (cdr set)))))
+
+;; try out
+(adjoin-sorted-set 3 '(0 1 2))
+(adjoin-sorted-set 3 '(1 2 4))
+(adjoin-sorted-set 3 '(4 5 6))
 
 
+;;; Exercise 2.62
+
+(defn union-sorted-set [set1 set2]
+  (cond (null? set1) set2
+        (null? set2) set1
+        :else
+        (let [[[x1 _] [x2 _]]
+              [ set1   set2 ]]
+          (cond (= x1 x2)
+                (recur (cdr set1) set2)
+                ;;
+                (< x1 x2)
+                (cons x1 (union-sorted-set (cdr set1) set2))
+                ;;
+                (> x1 x2)
+                (cons x2 (union-sorted-set set1 (cdr set2)))))))
+
+;; try out
+(union-sorted-set '(1 3) '(2 4))
 
 
-
+;;; Exercise 2.63
 
 
 
