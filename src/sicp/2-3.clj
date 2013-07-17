@@ -3,8 +3,7 @@
 
 ;;; Namespace and dependencies
 
-(ns sicp.2-3
-  (:require [clojure.math.numeric-tower :as math]))
+(ns sicp.2-3)
 
 ;;; Utility functions
 
@@ -199,8 +198,8 @@
   (cond (null? set1) set2
         (null? set2) set1
         :else
-        (let [[[x1 _] [x2 _]]
-              [ set1   set2 ]]
+        (let [[[x1] [x2]]
+              [set1 set2]]
           (cond (= x1 x2)
                 (recur (cdr set1) set2)
                 ;;
@@ -214,16 +213,155 @@
 (union-sorted-set '(1 3) '(2 4))
 
 
-;;; Exercise 2.63
+;;; Exercise 2.67
+
+;; Leaves
+
+(defn make-leaf [symbol weight]
+  (list :leaf symbol weight))
+
+(defn leaf? [[tag]] (= tag :leaf))
+
+(defn symbol-leaf [[_ x]] x)
+
+(defn weight-leaf [[_ _ x]] x)
+
+;; Huffman tree
+
+(defn make-code-tree [left right]
+  (list left
+        right
+        (concat (symbols left)
+                (symbols right))
+        (+ (weight left)
+           (weight right))))
+
+(def left-branch  car)
+(def right-branch cadr)
+
+(defn symbols [tree]
+  (if (leaf? tree)
+    (list (symbol-leaf tree))
+    (let [[_ _ sym] tree] sym)))
+
+(defn weight [tree]
+  (if (leaf? tree)
+    (weight-leaf tree)
+    (let [[_ _ _ w] tree] w)))
+
+;; decode
+
+(defn decode [bits tree]
+  (letfn
+    [(decode-1 [bits current-branch]
+               (if (null? bits)
+                 '()
+                 (let [next-branch
+                       (choose-branch (car bits)
+                                      current-branch)]
+                   (if (leaf? next-branch)
+                     (cons (symbol-leaf next-branch)
+                           (decode-1 (cdr bits) tree))
+                     (recur (cdr bits) next-branch)))))]
+    (decode-1 bits tree)))
+
+(defn choose-branch [bit branch]
+  (case bit
+    0 (left-branch  branch)
+    1 (right-branch branch)
+    (println "bad bit -- CHOOSE-BRANCH" bit)))
+
+;; Set of weighted elements
+
+(defn adjoin-weighted-set [x set]
+  (cond (null? set)
+        (list x)
+        ;;
+        (< (weight x) (weight (car set)))
+        (cons x set)
+        ;;
+        :else (cons (car set)
+                    (adjoin-weighted-set x (cdr set)))))
+
+(defn make-leaf-set [pairs]
+  (if (null? pairs)
+    '()
+    (let [pair (car pairs)]
+      (adjoin-weighted-set (make-leaf (car  pair)  ; symbol
+                                      (cadr pair)) ; frequency
+                           (make-leaf-set (cdr pairs))))))
+
+;; Sample tree
+
+(def sample-tree
+  (make-code-tree (make-leaf :A 4)
+                  (make-code-tree (make-leaf :B 2)
+                                  (make-code-tree (make-leaf :D 1)
+                                                  (make-leaf :C 1)))))
+
+(def sample-message '(0 1 1 0 0 1 0 1 0 1 1 1 0))
+
+;; try `decode`
+
+(decode sample-message sample-tree)
 
 
+;;; Exercise 2.68
+
+(defn encode [message tree]
+  (if (null? message)
+    '()
+    (concat (encode-symbol (car message) tree)
+            (encode (cdr message) tree))))
+
+(defn encode-symbol [sym tree]
+  (if (leaf? tree)
+    '()
+    (let [left  (left-branch  tree)
+          right (right-branch tree)]
+      (cond (element-of-set? sym (symbols left))
+            (cons 0 (encode-symbol sym left))
+            ;;
+            (element-of-set? sym (symbols right))
+            (cons 1 (encode-symbol sym right))
+            ;;
+            :else
+            (println "bad symbol -- ENCODE-SYMBOL" sym)))))
+
+;; try `encode`
+
+(= sample-message
+  (encode (decode sample-message sample-tree) sample-tree))
 
 
+;;; Exercise 2.69
+
+(defn generate-huffman-tree [pairs]
+  (successive-merge (make-leaf-set pairs)))
+
+(defn successive-merge [set]
+  (if-not (seq (cdr set))
+    (car set)
+    (let [[min1 min2 & remain] set]
+      (recur (adjoin-weighted-set (make-code-tree min1 min2)
+                                  remain)))))
+
+;; try it out
+
+(def sample-tree-2
+  (generate-huffman-tree '((:A 4) (:B 2) (:D 1) (:C 1))))
+
+(= sample-message
+   (encode (decode sample-message sample-tree-2) sample-tree-2))
 
 
+;;; Exercise 2.71
+
+;;; 1 bit is required to encode the most frequent symbol;
+;;; n bits for the least frequent symbol.
 
 
+;;; Exercise 2.72
 
-
-
-
+;;; To encode the most frequent symbol:  O(n)
+;;; To encode the least frequent symbol: O(n^2)
