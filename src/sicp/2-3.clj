@@ -5,6 +5,7 @@
 
 (ns sicp.2-3)
 
+
 ;;; Utility functions
 
 (def car first)
@@ -73,7 +74,7 @@
 
 (defn make-exponentiation [base exp]
   (cond (and (number? base)
-             (number? exp)) (math/expt base exp)
+             (number? exp)) (Math/pow base exp)
         (=number? exp  0)   1
         (=number? exp  1)   base
         :else (list '** base exp)))
@@ -228,6 +229,11 @@
 
 ;; Huffman tree
 
+(defn symbols [tree]
+  (if (leaf? tree)
+    (list (symbol-leaf tree))
+    (let [[_ _ sym] tree] sym)))
+
 (defn make-code-tree [left right]
   (list left
         right
@@ -238,11 +244,6 @@
 
 (def left-branch  car)
 (def right-branch cadr)
-
-(defn symbols [tree]
-  (if (leaf? tree)
-    (list (symbol-leaf tree))
-    (let [[_ _ sym] tree] sym)))
 
 (defn weight [tree]
   (if (leaf? tree)
