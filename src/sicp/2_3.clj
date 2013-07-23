@@ -3,7 +3,7 @@
 
 ;;; Namespace and dependencies
 
-(ns sicp.2-3)
+(ns sicp.2.3)
 
 
 ;;; Utility functions

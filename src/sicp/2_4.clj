@@ -8,13 +8,24 @@
 
 ;;; `get` & `put`
 
-(def *dispatch-table* (atom {}))
+(defn compare-symbol-seq [seq1 seq2]
+  (cond (every? empty? [seq1 seq2]) 0
+        (empty? seq1)               -1
+        (empty? seq2)               1
+        :else
+        (let [sym1 (->> seq1 first str)
+              sym2 (->> seq2 first str)]
+          (if (= sym1 sym2)
+            (recur (rest seq1) (rest seq2))
+            (compare sym1 sym2)))))
+
+(def *dispatch-table* (atom (sorted-map-by compare-symbol-seq)))
 
 (defn put [op type item]
   (swap! *dispatch-table* assoc-in [type op] item))
 
 (defn get [op type]
-  (get-in (deref *dispatch-table*) [type op]))
+  (get-in @*dispatch-table* [type op]))
 
 
 ;;; Exercise 2.75
@@ -33,7 +44,7 @@
         (variable? exp)
         (if (same-variable? exp var) 1 0)
         ;;
-        :else ((get 'deriv (operator exp))
+        :else ((get 'deriv (->> exp operator list))
                (operands exp) var)))
 
 ;; sum & multiply
@@ -53,8 +64,8 @@
      (deriv' [exp var]
              (make-sum (deriv (addend exp) var)
                        (deriv (augend exp) var)))]
-    (put 'deriv    '+ deriv')
-    (put 'make-sum '+ make-sum)
+    (put 'deriv    '(+) deriv')
+    (put 'make-sum '(+) make-sum)
     :done))
 
 (defn install-deriv-product-package []
@@ -72,8 +83,8 @@
                                      (deriv (multiplicand exp) var))
                        (make-product (deriv (multiplier exp) var)
                                      (multiplicand exp))))]
-    (put 'deriv        '* deriv')
-    (put 'make-product '* make-product)
+    (put 'deriv        '(*) deriv')
+    (put 'make-product '(*) make-product)
     :done))
 
 ;; try it out
@@ -82,8 +93,8 @@
   (install-deriv-product-package)
   :done)
 
-(def make-sum     (get 'make-sum '+))
-(def make-product (get 'make-product '*))
+(def make-sum     (get 'make-sum '(+)))
+(def make-product (get 'make-product '(*)))
 
 (deriv '(* (* x y) (+ x 3)) 'x)
 
@@ -93,7 +104,7 @@
   (letfn
     [(make-exponent [base exp]
                     (cond (and (number? base)
-                               (number? exp)) (math/pow base exp)
+                               (number? exp)) (Math/pow base exp)
                           (=number? exp  0)   1
                           (=number? exp  1)   base
                           :else (list '** base exp)))
@@ -105,15 +116,15 @@
                (make-product exp
                              (make-product (make-exponent base (dec exp))
                                            (deriv base var)))))]
-    (put 'deriv         '** deriv')
-    (put 'make-exponent '** make-exponent)
+    (put 'deriv         '(**) deriv')
+    (put 'make-exponent '(**) make-exponent)
     :done))
 
 (do
   (install-deriv-exponent-package)
   :done)
 
-(def make-exponent (get 'make-exponent '**))
+(def make-exponent (get 'make-exponent '(**)))
 
 ;; try exponentiation
 (deriv '(** x 3) 'x)
