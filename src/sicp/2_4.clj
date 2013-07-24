@@ -22,10 +22,14 @@
 (def *dispatch-table* (atom (sorted-map-by compare-symbol-seq)))
 
 (defn put [op type item]
-  (swap! *dispatch-table* assoc-in [type op] item))
+  (swap! *dispatch-table*
+         assoc-in
+         [(if (symbol? type) (list type) type) op]
+         item))
 
 (defn get [op type]
-  (get-in @*dispatch-table* [type op]))
+  (get-in @*dispatch-table*
+          [(if (symbol? type) (list type) type) op]))
 
 
 ;;; Exercise 2.75
@@ -44,7 +48,7 @@
         (variable? exp)
         (if (same-variable? exp var) 1 0)
         ;;
-        :else ((get 'deriv (->> exp operator list))
+        :else ((get 'deriv (operator exp))
                (operands exp) var)))
 
 ;; sum & multiply
