@@ -1,10 +1,15 @@
-;;;; 1.3 Formulating Abstractions with Higher-Order Procedures
-;;;; =========================================================
+;;;; Chapter 1: Building Abstractions with Procedures
+;;;; ================================================
 
 ;;; Namespace and dependencies
 
-(ns sicp.1-3
+(ns sicp.ch1
   (:require [clojure.math.numeric-tower :as math]))
+
+(defn square [x] (math/expt x 2))
+(defn cube [x] (math/expt x 3))
+(defn log [x] (Math/log x))
+(defn average [& lst] (/ (reduce + lst) (count lst)))
 
 ;;; Newton Integral
 
@@ -19,12 +24,8 @@
     (* (sum f (+ a (/ dx 2.0)) add-dx b)
        dx)))
 
-(defn square [x] (math/expt x 2))
-(defn cube [x] (math/expt x 3))
-
 (newton-integral cube 0 1 0.01)
 (newton-integral cube 0 1 0.001)
-
 
 ;;; Exercise 1.29
 
@@ -40,16 +41,15 @@
 (simpson-integral cube 0 1 100)
 (simpson-integral cube 0 1 1000)
 
-
 ;;; Exercise 1.30
 
 (defn iterative-sum [term a next b]
-  (loop [a a, result 0]
+  (loop [a a
+         result 0]
     (if (> a b)
       result
       (recur (next a)
              (+ (term a) result)))))
-
 
 ;;; Exercise 1.31
 
@@ -78,12 +78,12 @@
 ;;; b)
 
 (defn iterative-product [term a next b]
-  (loop [a a, result 1]
+  (loop [a a
+         result 1]
     (if (> a b)
       result
       (recur (next a)
              (* (term a) result)))))
-
 
 ;;; Exercise 1.32
 
@@ -105,7 +105,6 @@
 (defn accumulative-product
   [term a next b]
   (accumulate * 1 term a next b))
-
 
 ;;; Exercise 1.33
 
@@ -131,7 +130,6 @@
 
 (production-of-relative-primes 10)
 
-
 ;;; Exercise 1.35
 
 (defn fixed-point [f first-guess]
@@ -148,7 +146,6 @@
 
 (fixed-point #(+ 1 (/ 1 %)) 1.0)
 
-
 ;;; Exercise 1.36
 
 (defn fixed-point' [f first-guess]
@@ -163,16 +160,8 @@
                    (! next (inc steps)))))]
     (try' first-guess 0)))
 
-;;; utility functions
-
-(defn log [x] (Math/log x))
-(defn average [& lst] (/ (reduce + lst) (count lst)))
-
-;;; compare steps
-
 (fixed-point' #(/ (log 1000) (log %)) 4)
 (fixed-point' #(average % (/ (log 1000) (log %))) 4)
-
 
 ;;; Exercise 1.37
 
@@ -191,16 +180,13 @@
 ;;; b)
 
 (defn iterative-cont-frac [n d k]
-  (loop [i k, result 0]
+  (loop [i k result 0]
     (if (< i 1)
       result
       (recur (dec i)
              (/ (n i) (+ (d i) result))))))
 
-;; try out `iterative-cont-frac`
-
 (iterative-cont-frac (fn [x] 1.0) (fn [x] 1.0) 30)
-
 
 ;;; Exercise 1.38
 
@@ -210,7 +196,6 @@
              (* 2 (/ (inc i) 3))
              1))]
   (iterative-cont-frac n d 20))
-
 
 ;;; Exercise 1.40
 
@@ -236,20 +221,17 @@
 
 (newtons-method (cubic 1 1 -3) 0.0)
 
-
 ;;; Exercise 1.41
 
 (defn double [f] #(f (f %)))
 
 (((double (double double)) inc) 5)
 
-
 ;;; Exercise 1.42
 
 (defn compose [f g] #(f (g %)))
 
 ((compose square inc) 6)
-
 
 ;;; Exercise 1.43
 
@@ -259,7 +241,6 @@
     (compose f (repeated f (dec n)))))
 
 ((repeated square 2) 5)
-
 
 ;;; Exercise 1.44
 
@@ -274,7 +255,6 @@
 (defn repeated-smooth [f n] ((repeated smooth n) f))
 
 ((repeated-smooth square 10) 5)
-
 
 ;;; Exercise 1.45
 
@@ -297,7 +277,6 @@
     (damped-nth-root n x damp-times)))
 
 (nth-root 10 (math/expt 3 10))
-
 
 ;;; Exercise 1.46
 

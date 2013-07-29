@@ -1,11 +1,10 @@
-;;;; 3.1 Assignment and Local State
-;;;; ==============================
+;;;; Chapter 3: Modularity, Objects, and State
+;;;; =========================================
 
 ;;; Namespace and dependencies
 
-(ns sicp.3-1
+(ns sicp.ch3
   (:require [clojure.contrib.generic.math-functions :as math]))
-
 
 ;;; Exercise 3.1
 
@@ -13,13 +12,10 @@
   (let [value (atom init)]
     (fn [delta] (swap! value + delta))))
 
-;; try it out
-
 (def A-3-1 (make-accumulator 5))
 
 (A-3-1 10)
 (A-3-1 10)
-
 
 ;;; Exercise 3.2
 
@@ -32,15 +28,12 @@
                     (swap! counter inc)
                     (apply f args))))))
 
-;; try it out
-
 (def s-3-2 (make-monitored math/sqrt))
 
 (s-3-2 100)
 (s-3-2 :how-many-calls)
 (s-3-2 :reset-count)
 (s-3-2 :how-many-calls)
-
 
 ;;; Exercise 3.3
 
@@ -70,13 +63,10 @@
                   "Unknown request -- MAKE-ACCOUNT" m)))))]
     dispatch))
 
-;; try it out
-
 (def acc-3-3 (make-account 100 :secret-password))
 
 ((acc-3-3 :secret-password :withdraw) 40)
 ((acc-3-3 :some-other-password :deposit) 50)
-
 
 ;;; Exercise 3.5
 
@@ -100,7 +90,6 @@
                       {:x1 2, :x2 8, :y1 4, :y2 10}
                       10000) 9)
 
-
 ;;; Exercise 3.7
 
 (defn make-joint [account password new-password]
@@ -109,10 +98,31 @@
       (fn [& args] "Incorrect password")
       (account password m))))
 
-;; try it out
-
 (def peter-acc (make-account 100 :open-sesame))
 (def paul-acc  (make-joint peter-acc :open-sesame :rosebud))
 
 ((peter-acc :open-sesame :withdraw) 50)
 ((paul-acc  :rosebud     :deposit)  40)
+
+;;; Exercise 3.19
+
+(defn cycle [coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (concat s (cycle s)))))
+
+(defn cycle? [coll]
+  (loop [x (drop 1 coll)
+         y (drop 2 coll)]
+    (cond (or (nil? (seq x))
+              (nil? (seq y)))
+          false
+          (identical? (first x)
+                      (first y))
+          true
+          :else
+          (recur (drop 1 x)
+                 (drop 2 y)))))
+
+(cycle? (cycle '(666 777)))
+(cycle? '(666 777 666 777))
