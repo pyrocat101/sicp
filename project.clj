@@ -1,8 +1,8 @@
 (defproject sicp "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :description "My SICP solutions in Clojure"
+  :url "https://github.com/pyrocat101/sicp"
+  :license {:name "Creative Commons Attribution License"
+            :url "http://creativecommons.org/licenses/by/3.0/us/"}
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/math.numeric-tower "0.0.2"]
                  [org.clojure/clojure-contrib "1.2.0"]])
