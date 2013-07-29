@@ -57,13 +57,13 @@
      desposit
      (fn [amount]
        (swap! balance + amount)
-       balance)
+       @balance)
      dispatch
      (fn [p m]
        (if-not (= p password)
          (fn [& args] "Incorrect password")
          (cond (= m :withdraw) withdraw
-               (= m :diposit)  desposit
+               (= m :deposit)  desposit
                :else
                (fn [& args]
                  (print-str
@@ -101,28 +101,18 @@
                       10000) 9)
 
 
-;;; Exercise 3.6
+;;; Exercise 3.7
 
+(defn make-joint [account password new-password]
+  (fn [p m]
+    (if-not (= p new-password)
+      (fn [& args] "Incorrect password")
+      (account password m))))
 
+;; try it out
 
+(def peter-acc (make-account 100 :open-sesame))
+(def paul-acc  (make-joint peter-acc :open-sesame :rosebud))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+((peter-acc :open-sesame :withdraw) 50)
+((paul-acc  :rosebud     :deposit)  40)
