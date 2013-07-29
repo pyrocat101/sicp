@@ -852,7 +852,7 @@
             (recur (rest seq1) (rest seq2))
             (compare sym1 sym2)))))
 
-(def *dispatch-table* (atom (sorted-map-by compare-symbol-seq)))
+(def ^:dynamic *dispatch-table* (atom (sorted-map-by compare-symbol-seq)))
 
 (defn put [op type item]
   (swap! *dispatch-table*
@@ -1180,7 +1180,7 @@
 
 ;;; coercion
 
-(def *coercion-table* (atom {}))
+(def ^:dynamic *coercion-table* (atom {}))
 
 (defn put-coercion [t1 t2 item]
   (swap! *coercion-table* assoc-in [t1 t2] item))

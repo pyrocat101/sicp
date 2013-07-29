@@ -125,4 +125,78 @@
                  (drop 2 y)))))
 
 (cycle? (cycle '(666 777)))
-(cycle? '(666 777 666 777))
+(cycle? '(666 666 666 666))
+
+;;; Exercise
+
+(defn test-and-set! [cell]
+  (dosync
+   (if @cell
+     true
+     (do
+       (ref-set cell true)
+       false))))
+
+(defn clear! [cell]
+  (dosync
+   (ref-set cell false)))
+
+(defn make-mutex []
+  (let [cell (ref false)]
+    (defn the-mutex [m]
+      (condp = m
+        :acquire (if (test-and-set! cell)
+                   (recur :acquire))
+        :release (clear! cell)))
+    the-mutex))
+
+(defn make-semaphore [n]
+  (let [n     (atom n)
+        mutex (make-mutex)]
+    (defn acquire []
+      (mutex :acquire)
+      (if (> n 0)
+        (do
+          (swap! n dec)
+          (mutex :release)
+          :done)
+        (do
+          (mutex :release)
+          (recur))))
+    (defn release []
+      (mutex :acquire)
+      (swap! n inc)
+      (mutex :release)
+      :done)
+    (defn dispatch [m]
+      (condp = m
+        :acquire (acquire)
+        :release (release)))
+    dispatch))
+
+;; `make-semaphore` clojure style
+
+(defn make-semaphore-clj [n]
+  (let [n (ref n)]
+    (defn acquire []
+      (dosync
+       (when (> n 0)
+         (alter n dec)
+         :done)))
+    (defn release []
+      (dosync
+       (alter n inc)
+       :done))
+    (defn dispatch [m]
+      (condp = m
+        :acquire (acquire)
+        :release (release)))
+    dispatch))
+
+
+
+
+
+
+
+
