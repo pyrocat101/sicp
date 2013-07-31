@@ -4,7 +4,8 @@
 ;;; Namespace and dependencies
 
 (ns sicp.ch3
-  (:require [clojure.contrib.generic.math-functions :as math]))
+  (:require [clojure.contrib.generic.math-functions :as math])
+  (:require [clojure.string :as string]))
 
 ;;; Exercise 3.1
 
@@ -106,11 +107,6 @@
 
 ;;; Exercise 3.19
 
-(defn cycle [coll]
-  (lazy-seq
-   (when-let [s (seq coll)]
-     (concat s (cycle s)))))
-
 (defn cycle? [coll]
   (loop [x (drop 1 coll)
          y (drop 2 coll)]
@@ -127,7 +123,7 @@
 (cycle? (cycle '(666 777)))
 (cycle? '(666 666 666 666))
 
-;;; Exercise
+;;; Exercise 3.47
 
 (defn test-and-set! [cell]
   (dosync
@@ -192,6 +188,171 @@
         :acquire (acquire)
         :release (release)))
     dispatch))
+
+;;; Exercise 3.50
+
+(defmacro my-delay [& body]
+  `(memoize (fn [] ~@body)))
+
+(defn my-force [delayed-object]
+  (delayed-object))
+
+(defmacro cons-stream [a b]
+  `[~a (my-delay ~b)])
+
+(def stream-car first)
+(def stream-cdr (comp my-force second))
+
+(def the-empty-stream '())
+(def stream-null? (comp nil? seq))
+
+(defn stream-nth [s n]
+  (if (= n 0)
+    (stream-car s)
+    (recur (stream-cdr s) (dec n))))
+
+(defn stream-map [proc s]
+  (if (stream-null? s)
+    the-empty-stream
+    (cons-stream (proc (stream-car s))
+                 (stream-map proc (stream-cdr s)))))
+
+(defn stream-reduce [proc acc s]
+  (if (stream-null? s)
+    acc
+    (recur proc
+           (proc acc (stream-car s))
+           (stream-cdr s))))
+
+(defn display-stream [s]
+  (format
+   "(%s)"
+   (string/join " "
+                (reverse (stream-reduce #(cons (str %2) %1)
+                                        '() s)))))
+
+(defn stream-enumerate-interval [low high]
+  (if (> low high)
+    the-empty-stream
+    (cons-stream
+     low
+     (stream-enumerate-interval (inc low) high))))
+
+(defn stream-filter [pred s]
+  (cond (stream-null? s) the-empty-stream
+        (pred (stream-car s))
+        (cons-stream (stream-car s)
+                     (stream-filter pred
+                                    (stream-cdr s)))
+        :else
+        (recur pred (stream-cdr s))))
+
+(defn stream-map-ext [proc & argstreams]
+  (if (stream-null? (first argstreams))
+    the-empty-stream
+    (cons-stream
+     (apply proc (map stream-car argstreams))
+     (apply stream-map-ext
+            (cons proc (map stream-cdr argstreams))))))
+
+(let
+  [one-to-three  (stream-enumerate-interval 1 3)
+   two-to-four   (stream-enumerate-interval 2 4)
+   three-to-five (stream-enumerate-interval 3 5)]
+  (display-stream (stream-map-ext +
+                                  one-to-three
+                                  two-to-four
+                                  three-to-five)))
+
+;;; Exercise 3.51
+
+;;; The interpreter will print numbers from 0 to 7.
+
+;;; Exercise 3.52
+
+;;; sum: 1 -> 3 -> 15 -> 36 -> 210
+;;; no memo-proc (the evaluated result is not cached):
+;;; 1 -> 4 -> 19 -> 55 -> 265
+
+;;; Exercise 3.53
+
+((fn ! [] (lazy-seq (cons 1 (map + (!) (!))))))
+
+;;; Exercise 3.54
+
+((fn ! [] (lazy-seq (cons 1 (map * (!) (drop 2 (range)))))))
+
+;;; Exercise 3.55
+
+((fn ! [s] (lazy-seq (cons (first s) (map + (! s) (rest s)))))
+ (drop 1 (range)))
+
+;;; Exercise 3.56
+
+(def my-merge (comp distinct interleave))
+
+((fn ! []
+   (lazy-seq
+    (cons 1 (my-merge (map #(* 2 %) (!))
+                      (my-merge (map #(* 3 %) (!))
+                                (map #(* 5 %) (!))))))))
+
+;;; Exercise 3.59
+
+(defn integrate-series [s]
+  (lazy-seq (map / s (iterate inc 1))))
+
+(cons :c (integrate-series '(1 1 1 1)))
+
+(declare cosine-series sine-series)
+
+(def cosine-series
+  (lazy-seq
+   (cons 1 (map - (integrate-series sine-series)))))
+
+(def sine-series
+  (lazy-seq
+   (cons 0 (integrate-series cosine-series))))
+
+;;; Exercise 3.60
+
+(defn mul-series [s1 s2]
+  (lazy-seq
+   (let [s1car (first s1)
+         s2car (first s2)]
+     (cons (* s1car s2car)
+           (map +
+                (map #(* % s1car) (rest s2))
+                (mul-series (rest s1) s2))))))
+
+(map +
+     (mul-series cosine-series cosine-series)
+     (mul-series sine-series   sine-series))
+
+;;; Exercise 3.61
+
+(defn reciprocal-series [s]
+  (lazy-seq
+   (cons 1 (mul-series (map - (rest s))
+                       (reciprocal-series s)))))
+
+;;; Exercise 3.62
+
+(defn div-series [s1 s2]
+  (let [s2car (first s2)]
+    (if (= s2car 0)
+      "divide by zero"
+      (mul-series
+       s1
+       (reciprocal-series (map #(* (/ 1 s2car) %) s2))))))
+
+;; (div-series sine-series cosine-series)
+
+;;; Exercise 3.63
+
+
+
+
 
 
 
