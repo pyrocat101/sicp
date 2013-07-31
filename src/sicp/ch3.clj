@@ -284,8 +284,12 @@
 
 ;;; Exercise 3.55
 
-((fn ! [s] (lazy-seq (cons (first s) (map + (! s) (rest s)))))
- (drop 1 (range)))
+(defn partial-sums [s]
+  (lazy-seq
+   (cons (first s)
+         (map + (partial-sums s) (rest s)))))
+
+(partial-sums (drop 1 (range)))
 
 ;;; Exercise 3.56
 
@@ -303,6 +307,9 @@
   (lazy-seq (map / s (iterate inc 1))))
 
 (cons :c (integrate-series '(1 1 1 1)))
+
+;; (def exp-series
+;;   (lazy-seq (cons 1 (integrate-series exp-series))))
 
 (declare cosine-series sine-series)
 
@@ -332,9 +339,11 @@
 ;;; Exercise 3.61
 
 (defn reciprocal-series [s]
-  (lazy-seq
-   (cons 1 (mul-series (map - (rest s))
-                       (reciprocal-series s)))))
+  (def result
+    (lazy-seq
+     (cons 1 (mul-series (map - (rest s))
+                         result))))
+  result)
 
 ;;; Exercise 3.62
 
@@ -344,14 +353,59 @@
       "divide by zero"
       (mul-series
        s1
-       (reciprocal-series (map #(* (/ 1 s2car) %) s2))))))
+       (reciprocal-series (map #(/ % s2car) s2))))))
 
-;; (div-series sine-series cosine-series)
+;; (def tane-series (div-series sine-series cosine-series))
 
 ;;; Exercise 3.63
 
+;;; Though `(sqrt-stream x)` recursively called inside
+;;; `(sqrt-stream x)`, these two streams are not the same
+;;; one. Therefore rebundant computation is performed.
+;;;
+;;; If `memo-proc` is not used, the two versions are essentially
+;;; the same in terms of efficiency.
 
+;;; Exercise 3.64
 
+(defn stream-limit [[a b :as s] tolerance]
+  (if (< (math/abs (double (- b a))) tolerance)
+    b
+    (recur (rest s) tolerance)))
+
+(stream-limit (map / (repeat 1) (drop 1 (range))) 0.012)
+
+;;; Exercise 3.65
+
+(defn ln2-summands [n]
+  (lazy-seq
+   (cons (/ 1.0 n)
+         (map - (ln2-summands (inc n))))))
+
+(defn euler-transform [[s0 s1 s2 :as s]]
+  (lazy-seq
+   (cons (- s2 (/ (Math/pow (- s2 s1) 2)
+                     (+ s0 (* -2 s1) s2)))
+         (euler-transform (rest s)))))
+
+(defn make-tableau [transform s]
+  (lazy-seq
+   (cons s (make-tableau transform
+                         (transform s)))))
+
+(defn accelerated-sequence [transform s]
+  (map first
+       (make-tableau transform s)))
+
+(def ln2-stream
+  (partial-sums (ln2-summands 1)))
+
+(lazy-seq ln2-stream)
+(euler-transform ln2-stream)
+(accelerated-sequence euler-transform
+                      ln2-stream)
+
+;;; Exercise 3.66
 
 
 
