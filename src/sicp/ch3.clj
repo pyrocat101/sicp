@@ -295,11 +295,29 @@
 
 (def my-merge (comp distinct interleave))
 
+;; FIXME: this doesn't work
+;; (defn my-merge [s1 s2]
+;;   (cond (empty? s1) s2
+;;         (empty? s2) s1
+;;         :else
+;;         (let [s1-car (first s1)
+;;               s2-car (first s2)]
+;;           (cond (< s1-car s2-car)
+;;                 (lazy-seq
+;;                  (cons s1-car (my-merge (rest s1) s2)))
+;;                 (> s1-car s2-car)
+;;                 (lazy-seq
+;;                  (cons s2-car (my-merge s1 (rest s2))))
+;;                 :else
+;;                 (lazy-seq
+;;                  (cons s1-car
+;;                        (my-merge (rest s1) (rest s2))))))))
+
 ((fn ! []
    (lazy-seq
-    (cons 1 (my-merge (map #(* 2 %) (!))
-                      (my-merge (map #(* 3 %) (!))
-                                (map #(* 5 %) (!))))))))
+    (cons 1 (my-merge (map #(* % 2) (!))
+                      (my-merge (map #(* % 3) (!))
+                                (map #(* % 5) (!))))))))
 
 ;;; Exercise 3.59
 
@@ -321,7 +339,7 @@
   (lazy-seq
    (cons 0 (integrate-series cosine-series))))
 
-;;; Exercise 3.60
+; Exercise 3.60
 
 (defn mul-series [s1 s2]
   (lazy-seq
@@ -405,8 +423,81 @@
 (accelerated-sequence euler-transform
                       ln2-stream)
 
-;;; Exercise 3.66
+;;; Exercise 3.67
 
+(def integers (drop 1 (range)))
+
+(defn pairs-all
+  [[s-car & s-cdr :as s]
+   [t-car & t-cdr :as t]]
+  (lazy-seq
+   (cons
+    [s-car t-car]
+    (interleave
+     (map (fn [x] [s-car x]) t-cdr)
+     (map (fn [x] [x t-car]) s-cdr)
+     (pairs-all s-cdr t-cdr)))))
+
+;; (pairs-all integers integers)
+
+;;; Exercise 3.68
+
+;;; It doesn't work. The evaluation will result in an
+;;; infinite loop of calling `interleave` and `pair`
+;;; recursively, because there is no delay.
+
+;;; Exercise 3.69
+
+(defn pairs
+  [[s-car & s-cdr :as s]
+   [t-car & t-cdr :as t]]
+  (lazy-seq
+   (cons
+    [s-car t-car]
+    (interleave
+     (map (fn [x] [s-car x]) t-cdr)
+     (pairs-all s-cdr t-cdr)))))
+
+(defn triples
+  [[r-car & r-cdr :as r]
+   [s-car & s-cdr :as s]
+   [t-car & t-cdr :as t]]
+  (lazy-seq
+   (cons
+    [r-car s-car t-car]
+    (interleave
+     (map (fn [[x y]] [r-car x y])
+          (pairs s-cdr t-cdr))
+     (triples r-cdr s-cdr t-cdr)))))
+
+;; (filter
+;;  (fn [[a b c]]
+;;    (= (square c)
+;;       (+ (square a) (square b))))
+;;  (triples integers integers integers))
+
+;;; Exercise 3.70
+
+;;; FIXME: see `my-merge`.
+
+;; (defn my-merge [s1 s2]
+;;   (cond (empty? s1) s2
+;;         (empty? s2) s1
+;;         :else
+;;         (let [s1-car (first s1)
+;;               s2-car (first s2)]
+;;           (cond (< s1-car s2-car)
+;;                 (lazy-seq
+;;                  (cons s1-car (my-merge (rest s1) s2)))
+;;                 (> s1-car s2-car)
+;;                 (lazy-seq
+;;                  (cons s2-car (my-merge s1 (rest s2))))
+;;                 :else
+;;                 (lazy-seq
+;;                  (cons s1-car
+;;                        (my-merge (rest s1) (rest s2))))))))
+
+;;; Exercise 3.71
 
 
 
