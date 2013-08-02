@@ -357,11 +357,12 @@
 ;;; Exercise 3.61
 
 (defn reciprocal-series [s]
-  (def result
-    (lazy-seq
-     (cons 1 (mul-series (map - (rest s))
-                         result))))
-  result)
+  (let
+    [result
+     (lazy-seq
+      (cons 1 (mul-series (map - (rest s))
+                          result)))]
+    result))
 
 ;;; Exercise 3.62
 
@@ -403,7 +404,7 @@
 (defn euler-transform [[s0 s1 s2 :as s]]
   (lazy-seq
    (cons (- s2 (/ (Math/pow (- s2 s1) 2)
-                     (+ s0 (* -2 s1) s2)))
+                  (+ s0 (* -2 s1) s2)))
          (euler-transform (rest s)))))
 
 (defn make-tableau [transform s]
@@ -497,12 +498,75 @@
 ;;                  (cons s1-car
 ;;                        (my-merge (rest s1) (rest s2))))))))
 
-;;; Exercise 3.71
+;;; Exercise 3.74
 
+(defn sign-change-detector [v1 v2]
+  (cond (>= 0 (* v1 v2)) 0
+        (< v1 0) -1
+        (> v1 0)  1))
 
+(let
+  [sense-data (map math/sin (iterate #(+ % 1.5) 0))]
+  (map sign-change-detector
+       sense-data
+       (lazy-seq (cons 0 (rest sense-data)))))
 
+;;; Exercise 3.75
 
+(defn make-zero-crossings
+  [input-stream last-avpt last-value]
+  (let
+    [value (first input-stream)
+     avpt  (/ (+ value last-value) 2)]
+    (lazy-seq
+     (cons (sign-change-detector avpt last-avpt)
+           (make-zero-crossings (rest input-stream)
+                                avpt
+                                value)))))
 
+;;; Exercise 3.76
 
+(defn smooth [s]
+  (map (fn [[a b]] (/ (+ a b) 2))
+       (partition 2 1 s)))
 
+(defn make-zero-crossings-1
+  [input-stream]
+  (let [smoothed-data (smooth input-stream)]
+    (lazy-seq
+     (map sign-change-detector
+          smoothed-data
+          (lazy-seq (cons 0 (rest smoothed-data)))))))
 
+;;; Exercise 3.82
+
+(defn mento-carlo
+  [experiment-stream passed failed]
+  (letfn
+    [(next
+      [passed failed]
+      (lazy-seq
+       (cons (/ passed (+ passed failed))
+             (mento-carlo
+              (rest experiment-stream) passed failed))))]
+    (if (first experiment-stream)
+      (next (inc passed) failed)
+      (next passed (inc failed)))))
+
+(defn estimate-integral-stream
+  [P {:keys [x1 x2 y1 y2]}]
+  (let
+    [x-random-stream
+     (repeatedly #(+ x1 (* (rand) (- x2 x1))))
+     y-random-stream
+     (repeatedly #(+ y1 (* (rand) (- y2 y1))))
+     integral-stream
+     (map #(P %1 %2) x-random-stream y-random-stream)]
+    (map #(double (* % (- y2 y1) (- x2 x1)))
+         (mento-carlo integral-stream 0 0))))
+
+(/ (nth (estimate-integral-stream
+         (fn [x y] (>= 9 (+ (square (- x 5))
+                            (square (- y 7)))))
+         {:x1 2, :x2 8, :y1 4, :y2 10})
+        10000) 9)
