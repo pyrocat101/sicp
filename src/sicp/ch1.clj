@@ -4,10 +4,10 @@
 ;;; Namespace and dependencies
 
 (ns sicp.ch1
-  (:require [clojure.math.numeric-tower :as math]))
+  (:use [clojure.math.numeric-tower :only (gcd expt)]))
 
-(defn square [x] (math/expt x 2))
-(defn cube [x] (math/expt x 3))
+(defn square [x] (expt x 2))
+(defn cube [x] (expt x 3))
 (defn log [x] (Math/log x))
 (defn average [& lst] (/ (reduce + lst) (count lst)))
 
@@ -24,9 +24,6 @@
     (* (sum f (+ a (/ dx 2.0)) add-dx b)
        dx)))
 
-(newton-integral cube 0 1 0.01)
-(newton-integral cube 0 1 0.001)
-
 ;;; Exercise 1.29
 
 (defn simpson-integral [f a b n]
@@ -37,9 +34,6 @@
                         (* 4 (y n))
                         (y (inc n))))]
     (* (/ h 3) (sum term 1 next (dec n)))))
-
-(simpson-integral cube 0 1 100)
-(simpson-integral cube 0 1 1000)
 
 ;;; Exercise 1.30
 
@@ -64,16 +58,12 @@
 (defn factorial [n]
   (product identity 1 inc n))
 
-(factorial 10)
-
 (defn john-wallis [n]
   (product #(/ (* (inc %) (dec %))
                (square %))
            3.0
            #(+ % 2)
            (+ 1 (* n 2))))
-
-(* 4 (john-wallis 100))
 
 ;;; b)
 
@@ -125,17 +115,15 @@
 ;;; b)
 
 (defn production-of-relative-primes [n]
-  (letfn [(rel-prime? [x] (= 1 (math/gcd x n)))]
+  (letfn [(rel-prime? [x] (= 1 (gcd x n)))]
     (filtered-accumulate * 1 identity 1 inc (dec n) rel-prime?)))
-
-(production-of-relative-primes 10)
 
 ;;; Exercise 1.35
 
 (defn fixed-point [f first-guess]
   (let [tolerance 0.00001
         close-enough? (fn [v1 v2]
-                        (< (math/abs (- v1 v2))
+                        (< (Math/abs (- v1 v2))
                            tolerance))
         try' (fn ! [guess]
                (let [next (f guess)]
@@ -144,14 +132,12 @@
                    (! next))))]
     (try' first-guess)))
 
-(fixed-point #(+ 1 (/ 1 %)) 1.0)
-
 ;;; Exercise 1.36
 
 (defn fixed-point' [f first-guess]
   (let [tolerance 0.00001
         close-enough? (fn [v1 v2]
-                        (< (math/abs (- v1 v2))
+                        (< (Math/abs (- v1 v2))
                            tolerance))
         try' (fn ! [guess steps]
                (let [next (f guess)]
@@ -159,9 +145,6 @@
                    (do (println "steps:" steps) next)
                    (! next (inc steps)))))]
     (try' first-guess 0)))
-
-(fixed-point' #(/ (log 1000) (log %)) 4)
-(fixed-point' #(average % (/ (log 1000) (log %))) 4)
 
 ;;; Exercise 1.37
 
@@ -174,8 +157,6 @@
                  0
                  (/ (n i) (+ (d i) (f next))))))]
     (f 1)))
-
-(cont-frac (fn [x] 1.0) (fn [x] 1.0) 30)
 
 ;;; b)
 
@@ -190,12 +171,13 @@
 
 ;;; Exercise 1.38
 
-(letfn [(n [_] 1.0)
-        (d [i]
-           (if (= 0 (mod (inc i) 3))
-             (* 2 (/ (inc i) 3))
-             1))]
-  (iterative-cont-frac n d 20))
+(def natural-logarithm
+  (letfn [(n [_] 1.0)
+          (d [i]
+             (if (= 0 (mod (inc i) 3))
+               (* 2 (/ (inc i) 3))
+               1))]
+    (+ 2 (iterative-cont-frac n d 20))))
 
 ;;; Exercise 1.40
 
@@ -219,19 +201,13 @@
              (* b x)
              c)))
 
-(newtons-method (cubic 1 1 -3) 0.0)
-
 ;;; Exercise 1.41
 
-(defn double [f] #(f (f %)))
-
-(((double (double double)) inc) 5)
+(defn my-double [f] #(f (f %)))
 
 ;;; Exercise 1.42
 
 (defn compose [f g] #(f (g %)))
-
-((compose square inc) 6)
 
 ;;; Exercise 1.43
 
@@ -239,8 +215,6 @@
   (if (= n 1)
     f
     (compose f (repeated f (dec n)))))
-
-((repeated square 2) 5)
 
 ;;; Exercise 1.44
 
@@ -250,11 +224,7 @@
               (f (- % dx))
               (f (+ % dx)))))
 
-((smooth square) 5)
-
 (defn repeated-smooth [f n] ((repeated smooth n) f))
-
-((repeated-smooth square 10) 5)
 
 ;;; Exercise 1.45
 
@@ -262,21 +232,17 @@
 (defn repeated-average-damp [f n] ((repeated average-damp n) f))
 
 (defn damped-nth-root [n x damp-times]
-  (let [f #(/ x (math/expt % (dec n)))]
+  (let [f #(/ x (expt % (dec n)))]
     (fixed-point (repeated-average-damp f damp-times)
                  1.0)))
 
-(damped-nth-root 2 2 1)
-
 ;;; damp-times is lg(n)
 
-(defn lg [n] (math/ceil (/ (log n) (log 2))))
+(defn lg [n] (Math/ceil (/ (log n) (log 2))))
 
 (defn nth-root [n x]
   (let [damp-times (int (lg n))]
     (damped-nth-root n x damp-times)))
-
-(nth-root 10 (math/expt 3 10))
 
 ;;; Exercise 1.46
 
@@ -290,9 +256,7 @@
 
 (defn fixed-point-improved [f first-guess]
   (letfn [(good-enough? [v1 v2]
-                        (< (math/abs (- v1 v2))
+                        (< (Math/abs (- v1 v2))
                            0.00001))
           (improve [guess] (f guess))]
     ((iterative-improve good-enough? improve) first-guess)))
-
-(fixed-point-improved #(+ 1 (/ 1 %)) 1.0)
