@@ -774,8 +774,6 @@
 (def operator first)
 (def operands rest)
 
-(defmacro dbg[x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
-
 (defn deriv-data-directed [exp var]
   (cond (number? exp) 0
         (variable? exp) (if (same-variable? exp var) 1 0)
