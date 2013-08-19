@@ -4,9 +4,10 @@
 ;;; Namespace and dependencies
 
 (ns sicp.ch3
-  (:require [clojure.contrib.generic.math-functions :as math])
-  (:require [clojure.string :as string])
-  (:require [clojure.walk :as walk]))
+  (:require [clojure.math.numeric-tower :refer (abs expt)]
+            [clojure.contrib.generic.math-functions :refer (sin)]
+            [clojure.string :as string]
+            [clojure.walk :as walk]))
 
 ;;; https://gist.github.com/michalmarczyk/486880
 
@@ -41,10 +42,10 @@
   (let [value (atom init)]
     (fn [delta] (swap! value + delta))))
 
-(def A-3-1 (make-accumulator 5))
+;; (def A-3-1 (make-accumulator 5))
 
-(A-3-1 10)
-(A-3-1 10)
+;; (A-3-1 10)
+;; (A-3-1 10)
 
 ;;; Exercise 3.2
 
@@ -57,12 +58,12 @@
                     (swap! counter inc)
                     (apply f args))))))
 
-(def s-3-2 (make-monitored math/sqrt))
+;; (def s-3-2 (make-monitored math/sqrt))
 
-(s-3-2 100)
-(s-3-2 :how-many-calls)
-(s-3-2 :reset-count)
-(s-3-2 :how-many-calls)
+;; (s-3-2 100)
+;; (s-3-2 :how-many-calls)
+;; (s-3-2 :reset-count)
+;; (s-3-2 :how-many-calls)
 
 ;;; Exercise 3.3
 
@@ -92,14 +93,15 @@
                   "Unknown request -- MAKE-ACCOUNT" m)))))]
     dispatch))
 
-(def acc-3-3 (make-account 100 :secret-password))
+;; (def acc-3-3 (make-account 100 :secret-password))
 
-((acc-3-3 :secret-password :withdraw) 40)
-((acc-3-3 :some-other-password :deposit) 50)
+;; ((acc-3-3 :secret-password :withdraw) 40)
+;; ((acc-3-3 :some-other-password :deposit) 50)
 
 ;;; Exercise 3.5
 
-(defn random-in-range [low high]
+(defn ^double random-in-range
+  [^double low ^double high]
   (+ low (* (rand) (- high low))))
 
 (defn estimate-integral
@@ -112,12 +114,15 @@
           (swap! hit inc))))
     (double (* (/ @hit times) (- y2 y1) (- x2 x1)))))
 
-(defn square [n] (math/pow n 2))
+;; (defn square [n] (math/pow n 2))
 
-(/ (estimate-integral (fn [x y] (>= 9 (+ (square (- x 5))
-                                         (square (- y 7)))))
-                      {:x1 2, :x2 8, :y1 4, :y2 10}
-                      10000) 9)
+(defn mento-carlo-estimate-pi [^long times]
+  (/ (estimate-integral
+      (fn [x y] (>= 9 (+ (expt (- x 5) 2)
+                         (expt (- y 7) 2))))
+      {:x1 2, :x2 8, :y1 4, :y2 10}
+      times)
+     9))
 
 ;;; Exercise 3.7
 
@@ -130,8 +135,8 @@
 (def peter-acc (make-account 100 :open-sesame))
 (def paul-acc  (make-joint peter-acc :open-sesame :rosebud))
 
-((peter-acc :open-sesame :withdraw) 50)
-((paul-acc  :rosebud     :deposit)  40)
+;; ((peter-acc :open-sesame :withdraw) 50)
+;; ((paul-acc  :rosebud     :deposit)  40)
 
 ;;; Exercise 3.19
 
@@ -148,8 +153,8 @@
           (recur (drop 1 x)
                  (drop 2 y)))))
 
-(cycle? (cycle '(666 777)))
-(cycle? '(666 666 666 666))
+;; (cycle? (cycle '(666 777)))
+;; (cycle? '(666 666 666 666))
 
 ;;; Exercise 3.47
 
@@ -283,14 +288,14 @@
      (apply stream-map-ext
             (cons proc (map stream-cdr argstreams))))))
 
-(let
-  [one-to-three  (stream-enumerate-interval 1 3)
-   two-to-four   (stream-enumerate-interval 2 4)
-   three-to-five (stream-enumerate-interval 3 5)]
-  (display-stream (stream-map-ext +
-                                  one-to-three
-                                  two-to-four
-                                  three-to-five)))
+;; (let
+;;   [one-to-three  (stream-enumerate-interval 1 3)
+;;    two-to-four   (stream-enumerate-interval 2 4)
+;;    three-to-five (stream-enumerate-interval 3 5)]
+;;   (display-stream (stream-map-ext +
+;;                                   one-to-three
+;;                                   two-to-four
+;;                                   three-to-five)))
 
 ;;; Exercise 3.51
 
@@ -304,11 +309,13 @@
 
 ;;; Exercise 3.53
 
-((fn ! [] (lazy-seq (cons 1 (map + (!) (!))))))
+;;; The power-of-2 sequence.
 
 ;;; Exercise 3.54
 
-((fn ! [] (lazy-seq (cons 1 (map * (!) (drop 2 (range)))))))
+(def factorials
+  (lazy-seq
+   (cons 1 (map * factorials (drop 2 (range))))))
 
 ;;; Exercise 3.55
 
@@ -317,45 +324,49 @@
    (cons (first s)
          (map + (partial-sums s) (rest s)))))
 
-(partial-sums (drop 1 (range)))
-
 ;;; Exercise 3.56
 
-(def my-merge (comp distinct interleave))
+;; (def my-merge (comp distinct interleave))
 
-;; FIXME: this doesn't work
-;; (defn my-merge [s1 s2]
-;;   (cond (empty? s1) s2
-;;         (empty? s2) s1
-;;         :else
-;;         (let [s1-car (first s1)
-;;               s2-car (first s2)]
-;;           (cond (< s1-car s2-car)
-;;                 (lazy-seq
-;;                  (cons s1-car (my-merge (rest s1) s2)))
-;;                 (> s1-car s2-car)
-;;                 (lazy-seq
-;;                  (cons s2-car (my-merge s1 (rest s2))))
-;;                 :else
-;;                 (lazy-seq
-;;                  (cons s1-car
-;;                        (my-merge (rest s1) (rest s2))))))))
+(defmacro dbg[x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 
-((fn ! []
-   (lazy-seq
-    (cons 1 (my-merge (map #(* % 2) (!))
-                      (my-merge (map #(* % 3) (!))
-                                (map #(* % 5) (!))))))))
+(defn my-merge [s1 s2]
+  (lazy-seq
+   (cond (empty? s1) s2
+         (empty? s2) s1
+         :else
+         (let [s1-car (first s1)
+               s2-car (first s2)]
+           (cond (< s1-car s2-car)
+                 (cons s1-car (my-merge (rest s1) s2))
+                 (> s1-car s2-car)
+                 (cons s2-car (my-merge s1 (rest s2)))
+                 :else
+                 (cons s1-car
+                       (my-merge (rest s1) (rest s2))))))))
+
+(def hamming-numbers
+  (lazy-seq
+   (cons 1 (my-merge
+            (map #(* % 2) hamming-numbers)
+            (my-merge (map #(* % 3) hamming-numbers)
+                      (map #(* % 5) hamming-numbers))))))
+
+;; ((fn ! []
+;;    (lazy-seq
+;;     (cons 1 (my-merge (map #(* % 2) (!))
+;;                       (my-merge (map #(* % 3) (!))
+;;                                 (map #(* % 5) (!))))))))
 
 ;;; Exercise 3.59
 
 (defn integrate-series [s]
   (lazy-seq (map / s (iterate inc 1))))
 
-(cons :c (integrate-series '(1 1 1 1)))
+;; (cons :c (integrate-series '(1 1 1 1)))
 
-;; (def exp-series
-;;   (lazy-seq (cons 1 (integrate-series exp-series))))
+(def exp-series
+  (lazy-seq (cons 1 (integrate-series exp-series))))
 
 (declare cosine-series sine-series)
 
@@ -378,18 +389,18 @@
                 (map #(* % s1car) (rest s2))
                 (mul-series (rest s1) s2))))))
 
-(map +
-     (mul-series cosine-series cosine-series)
-     (mul-series sine-series   sine-series))
+;; (map +
+;;      (mul-series cosine-series cosine-series)
+;;      (mul-series sine-series   sine-series))
 
 ;;; Exercise 3.61
 
 (defn reciprocal-series [s]
   (letrec
-    [result
-     (lazy-seq
-      (cons 1 (mul-series (map - (rest s)) result)))]
-    result))
+   [result
+    (lazy-seq
+     (cons 1 (mul-series (map - (rest s)) result)))]
+   result))
 
 ;;; Exercise 3.62
 
@@ -415,11 +426,11 @@
 ;;; Exercise 3.64
 
 (defn stream-limit [[a b :as s] tolerance]
-  (if (< (math/abs (double (- b a))) tolerance)
+  (if (< (abs (double (- b a))) tolerance)
     b
     (recur (rest s) tolerance)))
 
-(stream-limit (map / (repeat 1) (drop 1 (range))) 0.012)
+;; (stream-limit (map / (repeat 1) (drop 1 (range))) 0.012)
 
 ;;; Exercise 3.65
 
@@ -430,7 +441,7 @@
 
 (defn euler-transform [[s0 s1 s2 :as s]]
   (lazy-seq
-   (cons (- s2 (/ (Math/pow (- s2 s1) 2)
+   (cons (- s2 (/ (expt (- s2 s1) 2)
                   (+ s0 (* -2 s1) s2)))
          (euler-transform (rest s)))))
 
@@ -446,10 +457,10 @@
 (def ln2-stream
   (partial-sums (ln2-summands 1)))
 
-(lazy-seq ln2-stream)
-(euler-transform ln2-stream)
-(accelerated-sequence euler-transform
-                      ln2-stream)
+;; (lazy-seq ln2-stream)
+;; (euler-transform ln2-stream)
+;; (accelerated-sequence euler-transform
+;;                       ln2-stream)
 
 ;;; Exercise 3.67
 
@@ -533,7 +544,7 @@
         (> v1 0)  1))
 
 (let
-  [sense-data (map math/sin (iterate #(+ % 1.5) 0))]
+  [sense-data (map sin (iterate #(+ % 1.5) 0))]
   (map sign-change-detector
        sense-data
        (lazy-seq (cons 0 (rest sense-data)))))
@@ -593,7 +604,7 @@
          (mento-carlo integral-stream 0 0))))
 
 (/ (nth (estimate-integral-stream
-         (fn [x y] (>= 9 (+ (square (- x 5))
-                            (square (- y 7)))))
+         (fn [x y] (>= 9 (+ (expt (- x 5) 2)
+                            (expt (- y 7) 2))))
          {:x1 2, :x2 8, :y1 4, :y2 10})
         10000) 9)
