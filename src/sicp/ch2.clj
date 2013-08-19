@@ -4,14 +4,23 @@
 ;;; Namespace and dependencies
 
 (ns sicp.ch2
-  (:require [clojure.math.numeric-tower :as math]))
+  (:require [clojure.math.numeric-tower :refer (gcd sqrt expt)]
+            [clojure.contrib.generic.math-functions :refer (sin cos atan2)]))
 
-(def abs  math/abs)
-(def gcd  math/gcd)
-(def sqrt math/sqrt)
-(defn square [x] (math/expt x 2))
-(defn cube [x] (math/expt x 3))
+(defn square [x] (* x x))
+(defn cube [x] (* x x x))
 (defn average [& lst] (/ (reduce + lst) (count lst)))
+
+(def car first)
+(def cdr rest)
+(def caar (comp car car))
+(def cddr (comp cdr cdr))
+(def cadr (comp car cdr))
+(def cdar (comp cdr car))
+(def caddr (comp car cddr))
+(def cadar (comp car cdar))
+(def cdddr (comp cdr cddr))
+(def null? (comp not seq))
 
 ;;; Exercise 2.1
 
@@ -27,8 +36,6 @@
 (def denom second)
 
 (defn print-rat [x] (str (numer x) "/" (denom x)))
-
-(print-rat (make-rat 2 -4))
 
 ;;; Exercise 2.2
 
@@ -64,13 +71,10 @@
 (defn car' [z] (z (fn [p q] p)))
 (defn cdr' [z] (z (fn [p q] q)))
 
-(car' (cons' :x :y))
-(cdr' (cons' :x :y))
-
 ;;; Exercise 2.5
 
-(defn cons'' [x y] (* (math/expt 2 x)
-                     (math/expt 3 y)))
+(defn cons'' [x y] (* (expt 2 x)
+                      (expt 3 y)))
 (defn car'' [z]
   (loop [z z
          result 0]
@@ -84,9 +88,6 @@
     (if (= 0 (mod z 3))
       (recur (/ z 3) (inc result))
       result)))
-
-(car'' (cons'' 4 5))
-(cdr'' (cons'' 5 6))
 
 ;;; Exercise 2.6
 
@@ -132,9 +133,6 @@
     (make-interval (min p1 p2 p3 p4)
                    (max p1 p2 p3 p4))))
 
-(sub-interval (make-interval 1 3)
-              (make-interval 0 4))
-
 ;;; Exercise 2.12
 
 (defn make-center-percent [midpoint percent]
@@ -146,8 +144,6 @@
         l (lower-bound i)]
     (/ (- h l) (+ h l))))
 
-(percent (make-center-percent 3.5 0.1))
-
 ;;; Exercise 2.17
 
 (defn last-pair [items]
@@ -156,19 +152,14 @@
       items
       (last-pair rest))))
 
-(last-pair (list 23 72 149 34))
-
 ;;; Exercise 2.18
 
 (defn reverse' [items]
-  (loop [reversed nil remain items]
+  (loop [reversed '() remain items]
     (if (empty? remain)
       reversed
       (recur (cons (first remain) reversed)
              (rest remain)))))
-
-(reverse' '())
-(reverse' '(1 4 9 16 25))
 
 ;;; Exercise 2.19
 
@@ -188,13 +179,7 @@
                         (first-denomination coin-values))
                      coin-values))))
 
-(cc 100 us-coins)
-;; (cc 100 uk-coins)
-
 ;; order of values does not matter
-
-(cc 100 (reverse us-coins))
-;; (cc 100 (reverse uk-coins))
 
 ;;; Exercise 2.20
 
@@ -202,9 +187,6 @@
   (if (odd? (first items))
     (filter odd? items)
     (filter even? items)))
-
-(same-parity 1 2 3 4 5 6 7)
-(same-parity 2 3 4 5 6 7)
 
 ;;; Exercise 2.21
 
@@ -216,9 +198,6 @@
 
 (defn square-list-2 [items] (map square items))
 
-(square-list-1 '(1 2 3 4))
-(square-list-2 '(1 2 3 4))
-
 ;;; Exercise 2.22
 
 (defn iterative-square-list [items]
@@ -229,8 +208,6 @@
              (cons (square (first things))
                    answer)))))
 
-(iterative-square-list '(1 2 3 4))
-
 ;;; Exercise 2.23
 
 (defn for-each [f items]
@@ -238,23 +215,6 @@
     (do
       (f (first items))
       (recur f (rest items)))))
-
-;;; Exercise 2.25
-
-(def car first)
-(def cdr rest)
-(def caar (comp car car))
-(def cddr (comp cdr cdr))
-(def cadr (comp car cdr))
-(def cdar (comp cdr car))
-(def caddr (comp car cddr))
-(def cadar (comp car cdar))
-(def cdddr (comp cdr cddr))
-(def null? (comp not seq))
-
-(cdar (cddr '(1 3 (5 7) 9)))
-(caar '((7)))
-(nth (iterate cadr '(1 (2 (3 (4 (5 (6 7))))))) 6)
 
 ;;; Exercise 2.27
 
@@ -269,8 +229,6 @@
         (recur (cons head reversed)
                (rest remain))))))
 
-(deep-reverse '((1 2) (3 4)))
-
 ;;; Exercise 2.28
 
 (defn fringe [tree]
@@ -279,8 +237,6 @@
         :else (concat (fringe (first tree))
                       (fringe (rest  tree)))))
 
-(fringe '((1 2) (3 4)))
-
 ;;; Exercise 2.30
 
 (defn square-tree-1 [tree]
@@ -288,7 +244,6 @@
         (not (seq? tree)) (square tree)
         :else (cons (square-tree-1 (first tree))
                     (square-tree-1 (rest  tree)))))
-(square-tree-1 '(1 (2 (3 4) 5 (6 7))))
 
 (defn square-tree-2 [tree]
   (map (fn [sub-tree]
@@ -296,7 +251,6 @@
            (square-tree-2 sub-tree)
            (square sub-tree)))
        tree))
-(square-tree-2 '(1 (2 (3 4) 5 (6 7))))
 
 ;;; Exercise 2.31
 
@@ -308,7 +262,6 @@
        tree))
 
 (defn square-tree-3 [tree] (tree-map square tree))
-(square-tree-3 '(1 (2 (3 4) 5 (6 7))))
 
 ;;; Exercise 2.32
 
@@ -323,7 +276,6 @@
     '(())
     (let [rest (subsets (rest s))]
       (append (map #(cons (first s) %) rest) rest))))
-(subsets '(1 2 3))
 
 ;;; Exercise 2.33
 
@@ -335,14 +287,12 @@
 
 (defn map' [p sequence]
   (accumulate (fn [x y] (cons (p x) y)) '() sequence))
+
 (defn append' [seq1 seq2]
   (accumulate cons seq2 seq1))
+
 (defn length' [sequence]
   (accumulate (fn [x y] (inc y)) 0 sequence))
-
-(map' square '(1 2 3 4 5))
-(append' '(1 2) '(3 4))
-(length' '(1 2 3 4 5))
 
 ;;; Exercise 2.34
 
@@ -351,8 +301,6 @@
                 (+ this-coeff (* x higher-terms)))
               0
               coefficient-sequence))
-
-(horner-eval 2 (list 1 3 0 5 0 1))
 
 ;;; Exercise 2.35
 
@@ -364,7 +312,6 @@
                        (count-leaves tree)
                        1))
                    t)))
-(count-leaves '((1 2) (3 4)))
 
 ;;; Exercise 2.36
 
@@ -373,10 +320,6 @@
     '()
     (cons (accumulate op init (map first seqs))
           (accumulate-n op init (map rest seqs)))))
-(accumulate-n + 0 '((1  2  3)
-                    (4  5  6)
-                    (7  8  9)
-                    (10 11 12)))
 
 ;;; Exercise 2.37
 
@@ -392,14 +335,6 @@
 (defn matrix-*-matrix [m n]
   (let [cols (transpose n)]
     (map #(matrix-*-vector cols %) m)))
-
-(def m '((1 2 3 4)
-         (4 5 6 6)
-         (6 7 8 9)))
-
-(matrix-*-vector m '(1 2 3 4))
-(transpose m)
-(matrix-*-matrix m (transpose m))
 
 ;;; Exercise 2.38
 
@@ -423,9 +358,6 @@
 (defn reverse-fold-left [sequence]
   (fold-left (fn [x y] (cons y x)) '() sequence))
 
-(reverse-fold-left  '(1 2 3 4 5))
-(reverse-fold-right '(1 2 3 4 5))
-
 ;;; Exercise 2.40
 
 (defn enumerate-interval [low high]
@@ -445,7 +377,7 @@
 (defn prime? [n]
   (cond (or (= n 2) (= n 3)) true
         (or (divisible? n 2) (< n 2)) false
-        :else (let [sqrt-n (Math/sqrt n)]
+        :else (let [sqrt-n (sqrt n)]
                 (loop [i 3]
                   (cond (divisible? n i) false
                         (< sqrt-n i) true
@@ -461,8 +393,6 @@
   (map make-pair-sum
        (filter prime-sum? (unique-pairs n))))
 
-(prime-sum-pairs 6)
-
 ;;; Exercise 2.41
 
 (defn unique-triples [n]
@@ -473,8 +403,6 @@
 
 (defn unique-triples-sum-equal-to [n]
   (filter #(= n (reduce + %)) (unique-triples n)))
-
-(unique-triples-sum-equal-to 10)
 
 ;;; Exercise 2.42
 
@@ -499,19 +427,17 @@
 
 (defn queens [board-size]
   (letfn [(queen-cols [k]
-    (if (= k 0)
-      (list empty-board)
-      (filter
-       (fn [positions] (safe? k positions))
-       (flatmap
-        (fn [rest-of-queens]
-          (map (fn [new-row]
-                 (adjoin-position new-row k rest-of-queens))
-               (enumerate-interval 1 board-size)))
-        (queen-cols (dec k))))))]
+                      (if (= k 0)
+                        (list empty-board)
+                        (filter
+                         (fn [positions] (safe? k positions))
+                         (flatmap
+                          (fn [rest-of-queens]
+                            (map (fn [new-row]
+                                   (adjoin-position new-row k rest-of-queens))
+                                 (enumerate-interval 1 board-size)))
+                          (queen-cols (dec k))))))]
     (queen-cols board-size)))
-
-(queens 8)
 
 ;;; Exercise 2.54
 
@@ -519,9 +445,6 @@
   (cond (or (= list1 '()) (= list2 '()))   true
         (not= (first list1) (first list2)) false
         :else (recur (rest list1) (rest list2))))
-
-(equal? '(a b c d) '(a b c d))
-(equal? '(a b c d) '(a c b d))
 
 ;;; Exercise 2.55
 
@@ -555,57 +478,65 @@
 
 (defn sum? [x] (and (seq? x) (= (car x) '+)))
 (def addend cadr)
-(def augend caddr)
 
 (defn product? [x] (and (seq? x) (= (car x) '*)))
 (def multiplier   cadr)
-(def multiplicand caddr)
 
-(defn exponentiation? [x] (and (seq? x) (= (car x) '**)))
+(declare augend multiplicand)
+
+(defn exponent? [x] (and (seq? x) (= (car x) '**)))
 (def base cadr)
 (def exponent caddr)
 
 (defn make-exponentiation [base exp]
   (cond (and (number? base)
-             (number? exp)) (Math/pow base exp)
+             (number? exp)) (expt base exp)
         (=number? exp  0)   1
         (=number? exp  1)   base
         :else (list '** base exp)))
 
-(defn deriv [exp var]
-  (cond
-   ;;
-   (number? exp) 0
-   ;;
-   (variable? exp)
-   (if (same-variable? exp var) 1 0)
-   ;
-   (sum? exp)
-   (make-sum (deriv (addend exp) var)
-             (deriv (augend exp) var))
-   ;;
-   (product? exp)
-   (make-sum
-    (make-product (multiplier exp)
-                  (deriv (multiplicand exp) var))
-    (make-product (deriv (multiplier exp) var)
-                  (multiplicand exp)))
-   ;;
-   (exponentiation? exp)
-   (let [base (base     exp)
-         exp  (exponent exp)]
-     (make-product exp
-                   (make-product (make-exponentiation base (dec exp))
-                                 (deriv base var))))
-   ;;
-   :else
-   (print-str "unknown expression type -- DERIV" exp)))
+(defmulti deriv
+  (fn [exp var]
+    (cond (number?   exp) :number
+          (variable? exp) :variable
+          (sum?      exp) :sum
+          (product?  exp) :product
+          (exponent? exp) :exponent
+          :else           :unknown)))
 
-(deriv '(** x 3) 'x)
+(defmethod deriv :number [exp var] 0)
+
+(defmethod deriv :variable
+  [exp var]
+  (if (same-variable? exp var) 1 0))
+
+(defmethod deriv :sum
+  [exp var]
+  (make-sum (deriv (addend exp) var)
+            (deriv (augend exp) var)))
+
+(defmethod deriv :product
+  [exp var]
+  (make-sum
+   (make-product (multiplier exp)
+                 (deriv (multiplicand exp) var))
+   (make-product (deriv (multiplier exp) var)
+                 (multiplicand exp))))
+
+(defmethod deriv :exponent
+  [exp var]
+  (let [base (base     exp)
+        exp  (exponent exp)]
+    (make-product
+     exp
+     (make-product (make-exponentiation base (dec exp))
+                   (deriv base var)))))
+
+(defmethod deriv :unknown
+  [exp var]
+  (print-str "unknown expression type -- DERIV" exp))
 
 ;;; Exercise 2.57
-
-;; modified version
 
 (defn augend [s]
   (if-not (seq (cdddr s))
@@ -616,8 +547,6 @@
   (if-not (seq (cdddr p))
     (caddr p)
     (cons '* (cddr p))))
-
-(deriv '(* x y (+ x 3)) 'x)
 
 ;;; Exercise 2.59
 
@@ -647,13 +576,11 @@
 ;;; Exercise 2.60
 
 ;; most functions remains unmodified
+
 (def elements-of-dup-set? element-of-set?)
 (def adjoin-dup-set cons)
 (def union-dup-set concat)
 (def intersection-dup-set intersection-set)
-
-(intersection-dup-set '(2 3 2 1 3 2 2) '(1 2))
-(union-dup-set '(2 3 2 1 3 2 2) '(3 4))
 
 ;;; For scenarios that frequently adjoins new elements into the set
 ;;; or unions two sets, this representation is more efficient.
@@ -673,10 +600,6 @@
         :else           (cons (car set)
                               (adjoin-sorted-set x (cdr set)))))
 
-(adjoin-sorted-set 3 '(0 1 2))
-(adjoin-sorted-set 3 '(1 2 4))
-(adjoin-sorted-set 3 '(4 5 6))
-
 ;;; Exercise 2.62
 
 (defn union-sorted-set [set1 set2]
@@ -693,8 +616,6 @@
                 ;;
                 (> x1 x2)
                 (cons x2 (union-sorted-set set1 (cdr set2)))))))
-
-(union-sorted-set '(1 3) '(2 4))
 
 ;;; Exercise 2.67
 
@@ -774,18 +695,6 @@
                                       (cadr pair)) ; frequency
                            (make-leaf-set (cdr pairs))))))
 
-;; Sample tree
-
-(def sample-tree
-  (make-code-tree (make-leaf :A 4)
-                  (make-code-tree (make-leaf :B 2)
-                                  (make-code-tree (make-leaf :D 1)
-                                                  (make-leaf :C 1)))))
-
-(def sample-message '(0 1 1 0 0 1 0 1 0 1 1 1 0))
-
-(decode sample-message sample-tree)
-
 ;;; Exercise 2.68
 
 (defn encode-symbol [sym tree]
@@ -808,9 +717,6 @@
     (concat (encode-symbol (car message) tree)
             (encode (cdr message) tree))))
 
-(= sample-message
-  (encode (decode sample-message sample-tree) sample-tree))
-
 ;;; Exercise 2.69
 
 (defn successive-merge [set]
@@ -822,12 +728,6 @@
 
 (defn generate-huffman-tree [pairs]
   (successive-merge (make-leaf-set pairs)))
-
-(def sample-tree-2
-  (generate-huffman-tree '((:A 4) (:B 2) (:D 1) (:C 1))))
-
-(= sample-message
-   (encode (decode sample-message sample-tree-2) sample-tree-2))
 
 ;;; Exercise 2.71
 
@@ -852,21 +752,21 @@
             (recur (rest seq1) (rest seq2))
             (compare sym1 sym2)))))
 
-(def ^:dynamic *dispatch-table* (atom (sorted-map-by compare-symbol-seq)))
+(def ^:dynamic *dispatch-table*
+  (atom (sorted-map-by compare-symbol-seq)))
 
-(defn put [op type item]
+(defn my-put [op type item]
   (swap! *dispatch-table*
          assoc-in
          [(if (symbol? type) (list type) type) op]
          item))
 
-(defn get [op type]
+(defn my-get [op type]
   (get-in @*dispatch-table*
           [(if (symbol? type) (list type) type) op]))
 
-;;; Exercise 2.75
+;;; Exercise 2.73
 
-(def variable? symbol?)
 (defn same-variable? [& vars]
   (and (every? variable? vars)
        (apply = vars)))
@@ -874,13 +774,12 @@
 (def operator first)
 (def operands rest)
 
-(defn deriv' [exp var]
+(defmacro dbg[x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
+
+(defn deriv-data-directed [exp var]
   (cond (number? exp) 0
-        ;;
-        (variable? exp)
-        (if (same-variable? exp var) 1 0)
-        ;;
-        :else ((get 'deriv (operator exp))
+        (variable? exp) (if (same-variable? exp var) 1 0)
+        :else ((my-get :deriv (operator exp))
                (operands exp) var)))
 
 ;; sum & multiply
@@ -894,11 +793,10 @@
                      :else (list '+ a1 a2)))
      (addend [[exp]]   exp)
      (augend [[_ exp]] exp)
-     (deriv' [exp var]
-             (make-sum (deriv (addend exp) var)
-                       (deriv (augend exp) var)))]
-    (put 'deriv    '(+) deriv')
-    (put 'make-sum '(+) make-sum)
+     (deriv  [exp var] (make-sum (deriv-data-directed (addend exp) var)
+                                 (deriv-data-directed (augend exp) var)))]
+    (my-put :deriv    '(+) deriv)
+    (my-put :make-sum '(+) make-sum)
     :done))
 
 (defn install-deriv-product-package []
@@ -911,13 +809,14 @@
                          :else (list '* m1 m2)))
      (multiplier   [[exp]]   exp)
      (multiplicand [[_ exp]] exp)
-     (deriv' [exp var]
-             (make-sum (make-product (multiplier exp)
-                                     (deriv (multiplicand exp) var))
-                       (make-product (deriv (multiplier exp) var)
-                                     (multiplicand exp))))]
-    (put 'deriv        '(*) deriv')
-    (put 'make-product '(*) make-product)
+     (deriv [exp var]
+            (make-sum
+             (make-product (multiplier exp)
+                           (deriv-data-directed (multiplicand exp) var))
+             (make-product (deriv-data-directed (multiplier exp) var)
+                           (multiplicand exp))))]
+    (my-put :deriv        '(*) deriv)
+    (my-put :make-product '(*) make-product)
     :done))
 
 (do
@@ -925,71 +824,54 @@
   (install-deriv-product-package)
   :done)
 
-(def make-sum     (get 'make-sum '(+)))
-(def make-product (get 'make-product '(*)))
-
-(deriv '(* (* x y) (+ x 3)) 'x)
+(def make-sum     (my-get :make-sum     '(+)))
+(def make-product (my-get :make-product '(*)))
 
 ;; insert `exponentiation`
 
 (defn install-deriv-exponent-package []
   (letfn
-    [(make-exponent [base exp]
-                    (cond (and (number? base)
-                               (number? exp)) (Math/pow base exp)
-                          (=number? exp  0)   1
-                          (=number? exp  1)   base
-                          :else (list '** base exp)))
-     (base     [[exp]]   exp)
+    [(make-exponent
+      [base exp]
+      (cond (and (number? base)
+                 (number? exp)) (expt base exp)
+            (=number? exp  0)   1
+            (=number? exp  1)   base
+            :else (list '** base exp)))
+     (base [[exp]] exp)
      (exponent [[_ exp]] exp)
-     (deriv' [exp var]
-             (let [base (base     exp)
-                   exp  (exponent exp)]
-               (make-product exp
-                             (make-product (make-exponent base (dec exp))
-                                           (deriv base var)))))]
-    (put 'deriv         '(**) deriv')
-    (put 'make-exponent '(**) make-exponent)
+     (deriv [exp var]
+            (let [base (base exp)
+                  exp (exponent exp)]
+              (make-product
+               exp
+               (make-product (make-exponent base (dec exp))
+                             (deriv-data-directed base var)))))]
+    (my-put :deriv         '(**) deriv)
+    (my-put :make-exponent '(**) make-exponent)
     :done))
 
 (do
   (install-deriv-exponent-package)
   :done)
 
-(def make-exponent (get 'make-exponent '(**)))
-
-(deriv '(** x 3) 'x)
+(def make-exponent (my-get :make-exponent '(**)))
 
 ;;; Exercise 2.75
 
-(defn apply-generic [op arg] (arg op))
+(defn apply-generic-msg-passing [op arg] (arg op))
 
-(defn make-from-mag-ang [r a]
+(defn make-from-mag-ang-msg-passing [r a]
   (letfn
     [(dispatch [op]
-               (cond (= op 'magnitude) r
-                     (= op 'angle)     a
-                     (= op 'real-part) (* r (Math/cos a))
-                     (= op 'imag-part) (* r (Math/sin a))
+               (cond (= op :magnitude) r
+                     (= op :angle)     a
+                     (= op :real-part) (* r (cos a))
+                     (= op :imag-part) (* r (sin a))
                      :else (prn "Unknown op: MAKE-FROM-MAG-ANG" op)))]
-  dispatch))
-
-(def x (make-from-mag-ang 5 (Math/atan2 3 4)))
-(apply-generic 'magnitude x)
-(apply-generic 'angle x)
-(apply-generic 'real-part x)
-(apply-generic 'imag-part x)
+    dispatch))
 
 ;;; Exercise 2.79
-
-;;; math shortcuts
-
-(def sqrt   #(Math/sqrt  %))
-(def sin    #(Math/sin   %))
-(def cos    #(Math/cos   %))
-(def square #(Math/pow   %   2))
-(def expt   #(Math/pow   %1 %2))
-(def atan   #(Math/atan2 %1 %2))
 
 ;;; tag selector and operations
 
@@ -999,7 +881,7 @@
 
 (defn apply-generic [op & args]
   (let [type-tags (map type-tag args)
-        proc      (get op type-tags)]
+        proc      (my-get op type-tags)]
     (if proc
       (apply proc (map contents args))
       (print-str
@@ -1008,25 +890,25 @@
 
 ;;; basic arithmetic
 
-(defn add [x y] (apply-generic 'add x y))
-(defn sub [x y] (apply-generic 'sub x y))
-(defn mul [x y] (apply-generic 'mul x y))
-(defn div [x y] (apply-generic 'div x y))
+(defn add [x y] (apply-generic :add x y))
+(defn sub [x y] (apply-generic :sub x y))
+(defn mul [x y] (apply-generic :mul x y))
+(defn div [x y] (apply-generic :div x y))
 
 ;;; scheme number package
 
 (defn install-scheme-number-package []
   (letfn
     [(tag [x] (attach-tag 'scheme-number x))]
-    (put 'add  '(scheme-number scheme-number) #(tag (+ %1 %2)))
-    (put 'sub  '(scheme-number scheme-number) #(tag (- %1 %2)))
-    (put 'mul  '(scheme-number scheme-number) #(tag (* %1 %2)))
-    (put 'div  '(scheme-number scheme-number) #(tag (/ %1 %2)))
-    (put 'make 'scheme-number                 #(tag %))
+    (my-put :add  '(scheme-number scheme-number) #(tag (+ %1 %2)))
+    (my-put :sub  '(scheme-number scheme-number) #(tag (- %1 %2)))
+    (my-put :mul  '(scheme-number scheme-number) #(tag (* %1 %2)))
+    (my-put :div  '(scheme-number scheme-number) #(tag (/ %1 %2)))
+    (my-put :make 'scheme-number                 #(tag %))
     :done))
 
 (defn make-scheme-number [n]
-  ((get 'make 'scheme-number) n))
+  ((my-get :make 'scheme-number) n))
 
 ;;; rational number package
 
@@ -1052,15 +934,15 @@
               (make-rat (* (numer x) (denom y))
                         (* (denom x) (numer y))))
      (tag [x] (attach-tag 'rational x))]
-    (put 'add  '(rational rational) #(tag (add-rat  %1 %2)))
-    (put 'sub  '(rational rational) #(tag (sub-rat  %1 %2)))
-    (put 'mul  '(rational rational) #(tag (mul-rat  %1 %2)))
-    (put 'div  '(rational rational) #(tag (div-rat  %1 %2)))
-    (put 'make 'rational            #(tag (make-rat %1 %2)))
+    (my-put :add  '(rational rational) #(tag (add-rat  %1 %2)))
+    (my-put :sub  '(rational rational) #(tag (sub-rat  %1 %2)))
+    (my-put :mul  '(rational rational) #(tag (mul-rat  %1 %2)))
+    (my-put :div  '(rational rational) #(tag (div-rat  %1 %2)))
+    (my-put :make 'rational            #(tag (make-rat %1 %2)))
     :done))
 
 (defn make-rational [n d]
-  ((get 'make 'rational) n d))
+  ((my-get :make 'rational) n d))
 
 ;;; rectangular package
 
@@ -1073,18 +955,18 @@
                 (sqrt (+ (square (real-part z))
                          (square (imag-part z)))))
      (angle [z]
-            (atan (imag-part z) (real-part z)))
+            (atan2 (imag-part z) (real-part z)))
      (make-from-mag-ang [r a]
                         [(* r (cos a)) (* r (sin a))])
      (tag [x] (attach-tag 'rectangular x))]
-    (put 'real-part 'rectangular real-part)
-    (put 'imag-part 'rectangular imag-part)
-    (put 'magnitude 'rectangular magnitude)
-    (put 'angle     'rectangular angle)
-    (put 'make-from-real-imag 'rectangular
-         #(tag (make-from-real-imag %1 %2)))
-    (put 'make-from-mag-ang 'rectangular
-         #(tag (make-from-mag-ang) %1 %2))
+    (my-put :real-part 'rectangular real-part)
+    (my-put :imag-part 'rectangular imag-part)
+    (my-put :magnitude 'rectangular magnitude)
+    (my-put :angle     'rectangular angle)
+    (my-put :make-from-real-imag 'rectangular
+            #(tag (make-from-real-imag %1 %2)))
+    (my-put :make-from-mag-ang 'rectangular
+            #(tag (make-from-mag-ang) %1 %2))
     :done))
 
 ;;; polar package
@@ -1100,28 +982,28 @@
                 (* (magnitude z) (sin (angle z))))
      (make-from-real-imag [x y]
                           [(sqrt (+ (square x) (square y)))
-                           (atan y x)])
+                           (atan2 y x)])
      (tag [x] (attach-tag 'polar x))]
-    (put 'real-part 'polar real-part)
-    (put 'imag-part 'polar imag-part)
-    (put 'magnitude 'polar magnitude)
-    (put 'angle 'polar angle)
-    (put 'make-from-real-imag 'polar
-         #(tag (make-from-real-imag %1 %2)))
-    (put 'make-from-mag-ang 'polar
-         #(tag (make-from-mag-ang %1 %2)))
+    (my-put :real-part 'polar real-part)
+    (my-put :imag-part 'polar imag-part)
+    (my-put :magnitude 'polar magnitude)
+    (my-put :angle 'polar angle)
+    (my-put :make-from-real-imag 'polar
+            #(tag (make-from-real-imag %1 %2)))
+    (my-put :make-from-mag-ang 'polar
+            #(tag (make-from-mag-ang %1 %2)))
     :done))
 
-(defn real-part [z] (apply-generic 'real-part z))
-(defn imag-part [z] (apply-generic 'imag-part z))
-(defn magnitude [z] (apply-generic 'magnitude z))
-(defn angle     [z] (apply-generic 'angle     z))
+(defn real-part [z] (apply-generic :real-part z))
+(defn imag-part [z] (apply-generic :imag-part z))
+(defn magnitude [z] (apply-generic :magnitude z))
+(defn angle     [z] (apply-generic :angle     z))
 
 (defn make-from-real-imag [x y]
-  ((get 'make-from-real-imag 'rectangular) x y))
+  ((my-get :make-from-real-imag 'rectangular) x y))
 
 (defn make-from-mag-ang [r a]
-  ((get 'make-from-mag-ang 'polar) r a))
+  ((my-get :make-from-mag-ang 'polar) r a))
 
 ;;; complex number package
 
@@ -1129,10 +1011,10 @@
   (letfn
     [(make-from-real-imag
       [x y]
-      ((get 'make-from-real-imag 'rectangular) x y))
+      ((my-get :make-from-real-imag 'rectangular) x y))
      (make-from-mag-ang
       [r a]
-      ((get 'make-from-mag-ang 'polar) r a))
+      ((my-get :make-from-mag-ang 'polar) r a))
      (add-complex
       [z1 z2]
       (make-from-real-imag (+ (real-part z1) (real-part z2))
@@ -1150,25 +1032,25 @@
       (make-from-mag-ang (/ (magnitude z1) (magnitude z2))
                          (- (angle z1) (angle z2))))
      (tag [z] (attach-tag 'complex z))]
-    (put 'add '(complex complex) #(tag (add-complex %1 %2)))
-    (put 'sub '(complex complex) #(tag (sub-complex %1 %2)))
-    (put 'mul '(complex complex) #(tag (mul-complex %1 %2)))
-    (put 'div '(complex complex) #(tag (div-complex %1 %2)))
-    (put 'make-from-real-imag 'complex
-         #(tag (make-from-real-imag %1 %2)))
-    (put 'make-from-mag-ang 'complex
-         #(tag (make-from-mag-ang %1 %2)))
-    (put 'real-part 'complex real-part)
-    (put 'imag-part 'complex imag-part)
-    (put 'magnitude 'complex magnitude)
-    (put 'angle     'complex angle)
+    (my-put :add '(complex complex) #(tag (add-complex %1 %2)))
+    (my-put :sub '(complex complex) #(tag (sub-complex %1 %2)))
+    (my-put :mul '(complex complex) #(tag (mul-complex %1 %2)))
+    (my-put :div '(complex complex) #(tag (div-complex %1 %2)))
+    (my-put :make-from-real-imag 'complex
+            #(tag (make-from-real-imag %1 %2)))
+    (my-put :make-from-mag-ang 'complex
+            #(tag (make-from-mag-ang %1 %2)))
+    (my-put :real-part 'complex real-part)
+    (my-put :imag-part 'complex imag-part)
+    (my-put :magnitude 'complex magnitude)
+    (my-put :angle     'complex angle)
     :done))
 
 (defn make-complex-from-real-imag [x y]
-  ((get 'make-from-real-imag 'complex) x y))
+  ((my-get :make-from-real-imag 'complex) x y))
 
 (defn make-complex-from-mag-ang [r a]
-  ((get 'make-from-mag-ang 'complex) r a))
+  ((my-get :make-from-mag-ang 'complex) r a))
 
 (do
   (install-scheme-number-package)
@@ -1189,56 +1071,23 @@
   (get-in @*coercion-table* [t1 t2]))
 
 (do
-  (put 'equ? '(scheme-number scheme-number) =)
-  (put 'equ? '(rational rational)
-       #(and (= (first  %1) (first  %2))
-             (= (second %1) (second %2))))
-  (put 'equ? '(complex complex)
-       #(and (= (real-part %1) (real-part %2))
-             (= (imag-part %1) (imag-part %2))))
+  (my-put :equ? '(scheme-number scheme-number) =)
+  (my-put :equ? '(rational rational)
+          #(and (= (first  %1) (first  %2))
+                (= (second %1) (second %2))))
+  (my-put :equ? '(complex complex)
+          #(and (= (real-part %1) (real-part %2))
+                (= (imag-part %1) (imag-part %2))))
   :done)
 
-(defn equ? [x y] (apply-generic 'equ? x y))
-
-(equ? (make-scheme-number 1) (make-scheme-number 1))
-(equ? (make-scheme-number 1) (make-scheme-number 2))
-(equ? (make-rational 1 2)    (make-rational 1 2))
-(equ? (make-rational 1 2)    (make-rational 1 3))
-(equ? (make-complex-from-real-imag 1 2)
-      (make-complex-from-real-imag 1 2))
-(equ? (make-complex-from-real-imag 1 2)
-      (make-complex-from-real-imag 1 3))
-
-;;; Exercise 2.81
-
-(defn apply-generic [op & args]
-  (let [type-tags (map type-tag args)
-        proc      (get op type-tags)]
-    (if proc
-      (apply proc (map contents args))
-      (if (and (= (count args) 2) (apply not= type-tags))
-        (let [type1  (first  type-tags)
-              type2  (second type-tags)
-              a1     (first  args)
-              a2     (second args)
-              t1->t2 (get-coercion type1 type2)
-              t2->t1 (get-coercion type1 type2)]
-          (cond t1->t2 (apply-generic op (t1->t2 a1) a2)
-                t2->t1 (apply-generic op a1 (t2->t1 a2))
-                :else  (print-str "No method for these types"
-                                  (list op type-tags))))
-        (print-str "No method for these types"
-                   (list op type-tags))))))
-
-(defn exp [x y] (apply-generic 'exp x y))
-(exp (make-scheme-number 2) (make-scheme-number 10))
+(defn equ? [x y] (apply-generic :equ? x y))
 
 ;;; Exercise 2.82
 
-(defn apply-generic+ [op & args]
+(defn apply-generic-coercion [op & args]
   (let
     [type-tags (map type-tag args)
-     proc      (get op type-tags)]
+     proc      (my-get op type-tags)]
     ;;
     (letfn
       [(coerce-to-type
@@ -1269,7 +1118,7 @@
             (let [coerced-list
                   (coerce-to-type coll (type-tag (first head)))
                   proc
-                  (get op (map type-tag coerced-list))]
+                  (my-get op (map type-tag coerced-list))]
               (if proc
                 (apply proc (map contents coerced-list))
                 (recur (rest head)))))))]
@@ -1289,12 +1138,7 @@
   (put-coercion 'scheme-number
                 'complex
                 scheme-number->complex)
-  (put 'add+
-       '(complex complex complex)
-       #(add-complex (add-complex %1 %2) %3))
+  (my-put 'add+
+          '(complex complex complex)
+          #(add-complex (add-complex %1 %2) %3))
   :done)
-
-(apply-generic+ 'add+
-                (make-complex-from-real-imag 1 2)
-                (make-scheme-number 2)
-                (make-scheme-number 3))
