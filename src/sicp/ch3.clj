@@ -5,7 +5,35 @@
 
 (ns sicp.ch3
   (:require [clojure.contrib.generic.math-functions :as math])
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string])
+  (:require [clojure.walk :as walk]))
+
+;;; https://gist.github.com/michalmarczyk/486880
+
+(defmacro letrec [bindings & body]
+  (let [bcnt (quot (count bindings) 2)
+        arrs (gensym "bindings_array")
+        arrv `(make-array Object ~bcnt)
+        bprs (partition 2 bindings)
+        bssl (map first bprs)
+        bsss (set bssl)
+        bexs (map second bprs)
+        arrm (zipmap bssl (range bcnt))
+        btes (map #(walk/prewalk (fn [f]
+                                   (if (bsss f)
+                                     `(aget ~arrs ~(arrm f))
+                                     f))
+                                 %)
+                  bexs)]
+    `(let [~arrs ~arrv]
+       ~@(map (fn [s e]
+                `(aset ~arrs ~(arrm s) ~e))
+              bssl
+              btes)
+       (let [~@(mapcat (fn [s]
+                         [s `(aget ~arrs ~(arrm s))])
+                       bssl)]
+         ~@body))))
 
 ;;; Exercise 3.1
 
@@ -357,11 +385,10 @@
 ;;; Exercise 3.61
 
 (defn reciprocal-series [s]
-  (let
+  (letrec
     [result
      (lazy-seq
-      (cons 1 (mul-series (map - (rest s))
-                          result)))]
+      (cons 1 (mul-series (map - (rest s)) result)))]
     result))
 
 ;;; Exercise 3.62
@@ -374,7 +401,7 @@
        s1
        (reciprocal-series (map #(/ % s2car) s2))))))
 
-;; (def tane-series (div-series sine-series cosine-series))
+(def tane-series (div-series sine-series cosine-series))
 
 ;;; Exercise 3.63
 
