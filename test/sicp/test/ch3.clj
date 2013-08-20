@@ -1,6 +1,6 @@
 (ns sicp.test.ch3
-  (:require [clojure.math.numeric-tower :refer (sqrt abs)]
-            [clojure.contrib.generic.math-functions :refer (log)]
+  (:require [clojure.contrib.generic.math-functions
+             :refer (sqrt sin abs sqr log)]
             [clojure.test :refer :all]
             [sicp.ch3 :refer :all]
             [sicp.test.helper :refer (≈)]))
@@ -27,7 +27,7 @@
 (deftest test-mento-carlo-estimate-pi
   (is (≈ Math/PI
          (mento-carlo-estimate-pi 100000)
-         0.01)))
+         0.02)))
 
 (deftest test-make-joint
   (is (= 50
@@ -106,3 +106,36 @@
            (abs (- euler ln2))
            (abs (- acc   ln2))))))
 
+(deftest test-pairs-all
+  (is (= '([1 1] [1 2] [2 1] [2 2] [1 3] [3 1])
+         (take 6 (pairs-all integers integers)))))
+
+(deftest test-pythagorean-triples
+  (let
+    [l (take 4 pythagorean-triples)]
+    (is (every? (fn [[a b c]]
+                  (and (< a b)
+                       (=  (+ (sqr a) (sqr b))
+                           (sqr c))))
+                l))))
+
+(deftest test-weighted-merge
+  (is (= '([1 1] [1 2] [1 3] [2 2] [1 4] [2 3])
+         (take 6 pairs-sorted-1)))
+  (is (= '([30 30] [30 60] [30 90] [60 60] [30 120])
+         (take 5 pairs-sorted-2))))
+
+(deftest test-ramanujan
+  (is (= '(1729 4104 13832 20683 32832 39312)
+         (take 6 ramanujan))))
+
+(deftest test-zero-crossings
+  (let
+    [sense-data (map sin (iterate #(+ % 1.5) 0))]
+    (is (= '(0 1 1 -1 -1)
+           (take 5 (zero-crossings sense-data))))))
+
+(deftest test-estimate-integral-stream
+  (is (≈ Math/PI
+         (estimate-pi-integral-stream 100000)
+         0.02)))
