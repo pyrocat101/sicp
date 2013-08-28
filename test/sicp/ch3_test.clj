@@ -1,9 +1,9 @@
-(ns sicp.test.ch3
+(ns sicp.ch3_test
   (:require [clojure.contrib.generic.math-functions
              :refer (sqrt sin abs sqr log)]
             [clojure.test :refer :all]
             [sicp.ch3 :refer :all]
-            [sicp.test.helper :refer (≈)]))
+            [sicp.test_helper :refer (≈)]))
 
 (deftest test-make-accumulator
   (let [acc (make-accumulator 5)]

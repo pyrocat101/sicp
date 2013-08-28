@@ -1,7 +1,7 @@
-(ns sicp.test.ch1
+(ns sicp.ch1_test
   (:require [clojure.test :refer :all]
             [sicp.ch1 :refer :all]
-            [sicp.test.helper :refer (≈)]))
+            [sicp.test_helper :refer (≈)]))
 
 (deftest test-newton-integral
   (is (≈ 0.25

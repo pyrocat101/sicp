@@ -1,4 +1,4 @@
-(ns sicp.test.helper)
+(ns sicp.test_helper)
 
 (defn ^boolean ≈
   ([^double x ^double y] (≈ x y 0.0001))

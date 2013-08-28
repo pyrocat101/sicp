@@ -1,7 +1,7 @@
-(ns sicp.test.ch2
+(ns sicp.ch2_test
   (:require [clojure.test :refer :all]
             [sicp.ch2 :refer :all]
-            [sicp.test.helper :refer (≈)]))
+            [sicp.test_helper :refer (≈)]))
 
 (deftest test-rat
   (is (= "-1/2"
