@@ -23,14 +23,14 @@
 
 (defprotocol Environmental
   "Something that is environment-friendly"
-  (extend [this bindings])
+  (my-extend [this bindings])
   (lookup [this var])
-  (set! [this var value])
+  (env-set! [this var value])
   (define! [this var value]))
 
 (deftype Env [bindings enclose]
   Environmental
-  (extend [this bindings]
+  (my-extend [this bindings]
     (Env. (atom bindings) this))
   (lookup [this var]
     (loop [env this]
@@ -42,17 +42,20 @@
             (throw (Exception.
                     (print-str "Unbound variable:" var)))
             (recur enclose))))))
-  (set! [this var value]
+  (env-set! [this var value]
     (loop [env this]
       (let [bindings (.bindings env)]
         (if (contains? @bindings var)
-          (swap! bindings assoc var value)
+          (do
+            (swap! bindings assoc var value)
+            var)
           (if-not enclose
             (throw (Exception.
                     (print-str "Unbound variable:" var)))
             (recur enclose))))))
   (define! [this var value]
-    (swap! (.bindings this) assoc var value)))
+    (swap! (.bindings this) assoc var value)
+    var))
 
 (defn make-env
   ([bindings]
@@ -64,24 +67,24 @@
 
 (defprotocol Applicable
   "Something that can be applied"
-  (apply [this args env eval]))
+  (my-apply [this args env eval]))
 
 (deftype Procedure [params body env]
   Applicable
-  (apply [this args env eval]
-    (let [env (sicp.ch4/extend (.env this)
-                               (zipmap (.params this) args))]
+  (my-apply [this args env eval]
+    (let [env (my-extend (.env this)
+                      (zipmap (.params this) args))]
       ((eval-seq eval) (.body this) env))))
 
 (deftype Primitive [fn]
   Applicable
-  (apply [this args env eval]
-    (clojure.core/apply (.fn this) args)))
+  (my-apply [this args env eval]
+    (apply (.fn this) args)))
 
 (defn applicative-apply
   [exp env eval]
   (let [[proc & args] (map #(eval % env) exp)]
-    (sicp.ch4/apply proc args env eval)))
+    (my-apply proc args env eval)))
 
 ;; primitive expressions
 
@@ -121,11 +124,11 @@
 
 (defn eval-assign
   [[v o] env eval]
-  (sicp.ch4/set! env v (eval o)))
+  (env-set! env v (eval o env)))
 
 (defn eval-define
   [[v o] env eval]
-  (sicp.ch4/define! env v (eval o)))
+  (define! env v (eval o env)))
 
 (defn eval-if
   [[pred conseq alt] env eval]
@@ -141,14 +144,22 @@
   [exp env eval]
   ((eval-seq eval) exp env))
 
+(defn seq->exp
+  ([] nil)
+  ([coll]
+     (cond (empty? coll) coll
+           (empty? (rest coll)) (first coll)
+           :else (cons 'begin coll))))
+
 (defn cond->if
   ([] false)
-  ([[[pred act] & next :as clauses]]
+  ([[[pred & act] & next :as clauses]]
      (if (= pred 'else)
        (if (empty? next)
-         act
+         (seq->exp act)
          (throw (Exception.
-                 (print-str "ELSE clause isn't last:" clauses)))))))
+                 (print-str "ELSE clause isn't last:" clauses))))
+       (list 'if pred (seq->exp act) (cond->if next)))))
 
 (defn eval-cond
   [exp env eval]
@@ -178,9 +189,6 @@
    :begin   eval-begin
    :cond    eval-cond})
 
-;; (def eval-1 (make-eval pristine-special-forms applicative-apply))
-;; (def env (make-env pristine-primitives))
-
 ;; Exercise 4.1
 
 (defn list-of-values-ltr [exps]
@@ -193,4 +201,45 @@
 
 ;; Louis is an idiot.
 
-;; Exercise 4.5
+;; Exercise 4.4
+
+(defn and->if
+  ([] true)
+  ([x] x)
+  ([x & next]
+     (list 'if x (apply and->if next) x)))
+
+(defn eval-and
+  [exp env eval]
+  (eval (apply and->if exp) env))
+
+(defn or->if
+  ([] nil)
+  ([x] x)
+  ([x & next]
+     (list 'if x x (apply or->if next))))
+
+(defn eval-or
+  [exp env eval]
+  (eval (apply or->if exp) env))
+
+(def special-forms-with-and-or
+  (assoc pristine-special-forms :and eval-and :or eval-or))
+
+;; Exercise 4.6
+
+(defn let->combination
+  [bindings & body]
+  (let [names  (map first bindings)
+        values (map second bindings)]
+    (cons (cons 'lambda (cons names body)) values)))
+
+(defn eval-let
+  [exp env eval]
+  (eval (apply let->combination exp) env))
+
+(def special-forms-with-let
+  (assoc pristine-special-forms :let eval-let))
+
+;; (def eval-1 (make-eval special-forms-with-and-or applicative-apply))
+;; (def env (make-env pristine-primitives))
