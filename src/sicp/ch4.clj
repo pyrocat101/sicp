@@ -240,6 +240,3 @@
 
 (def special-forms-with-let
   (assoc pristine-special-forms :let eval-let))
-
-;; (def eval-1 (make-eval special-forms-with-and-or applicative-apply))
-;; (def env (make-env pristine-primitives))

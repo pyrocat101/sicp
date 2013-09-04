@@ -2,13 +2,6 @@
   (:require [clojure.test :refer :all]
             [sicp.ch4 :refer :all]))
 
-;; (declare ^:dynamic *tmp*)
-;; (deftest test-list-of-values-ltr
-;;   (binding [*tmp* (atom 1)]
-;;     (list-of-values-ltr '((reset! *tmp* 6)
-;;                           (swap! *tmp* inc)))
-;;     (is (= @*tmp* 7))))
-
 (deftest test-pristine-eval
   (let [eval-1 (make-eval pristine-special-forms applicative-apply)
         env (make-env pristine-primitives)]
