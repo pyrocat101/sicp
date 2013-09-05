@@ -28,34 +28,40 @@
   (env-set! [this var value])
   (define! [this var value]))
 
-(deftype Env [bindings enclose]
+(deftype Env [bindings enclose])
+
+(def base-env-behavior
+  {:my-extend (fn [this bindings]
+                (Env. (atom bindings) this))
+   :lookup (fn [this var]
+             (loop [env this]
+               (let [bindings @(.bindings env)
+                     enclose   (.enclose  env)]
+                 (if (contains? bindings var)
+                   (get bindings var)
+                   (if-not enclose
+                     (throw (Exception.
+                             (print-str "Unbound variable:" var)))
+                     (recur enclose))))))
+   :env-set! (fn [this var value]
+               (loop [env this]
+                 (let [bindings (.bindings env)
+                       enclose  (.enclose  env)]
+                   (if (contains? @bindings var)
+                     (do
+                       (swap! bindings assoc var value)
+                       var)
+                     (if-not enclose
+                       (throw (Exception.
+                               (print-str "Unbound variable:" var)))
+                       (recur enclose))))))
+   :define! (fn [this var value]
+              (swap! (.bindings this) assoc var value)
+              var)})
+
+(extend Env
   Environmental
-  (my-extend [this bindings]
-    (Env. (atom bindings) this))
-  (lookup [this var]
-    (loop [env this]
-      (let [bindings @(.bindings env)
-            enclose  (.enclose env)]
-        (if (contains? bindings var)
-          (get bindings var)
-          (if-not enclose
-            (throw (Exception.
-                    (print-str "Unbound variable:" var)))
-            (recur enclose))))))
-  (env-set! [this var value]
-    (loop [env this]
-      (let [bindings (.bindings env)]
-        (if (contains? @bindings var)
-          (do
-            (swap! bindings assoc var value)
-            var)
-          (if-not enclose
-            (throw (Exception.
-                    (print-str "Unbound variable:" var)))
-            (recur enclose))))))
-  (define! [this var value]
-    (swap! (.bindings this) assoc var value)
-    var))
+  base-env-behavior)
 
 (defn make-env
   ([bindings]
@@ -107,7 +113,7 @@
   [special-forms apply-fn]
   (fn ! [exp env]
     (cond (self-eval? exp) exp
-          (variable? exp)  (.lookup env exp)
+          (variable? exp)  (lookup env exp)
           ;; special forms
           :else
           (let [[op & rest] exp
@@ -127,8 +133,12 @@
   (env-set! env v (eval o env)))
 
 (defn eval-define
-  [[v o] env eval]
-  (define! env v (eval o env)))
+  [exp env eval]
+  (if (symbol? (first exp))
+    (let [[v o] exp]
+      (define! env v (eval o env)))
+    (let [[[name & params] & body] exp]
+      (define! env name (Procedure. params body env)))))
 
 (defn eval-if
   [[pred conseq alt] env eval]
@@ -175,7 +185,8 @@
            '+     +
            '-     -
            '*     *
-           '/     /}]
+           '/     /
+           '=     =}]
     (into {} (for [[k v] m] [k (Primitive. v)]))))
 
 ;; basic special form
@@ -240,3 +251,139 @@
 
 (def special-forms-with-let
   (assoc pristine-special-forms :let eval-let))
+
+;; Exercise 4.7
+
+(defn let*->nested-lets
+  [bindings & body]
+  (letfn [(iter [names values]
+            (if (or (empty? (rest names))
+                    (empty? (rest values)))
+              (cons 'let
+                    (cons (list (list (first names)
+                                      (first values)))
+                          body))
+              (cons 'let
+                    (list (list (list (first names)
+                                      (first values)))
+                          (iter (rest names) (rest values))))))]
+    (iter (map first bindings) (map second bindings))))
+
+(defn eval-let*
+  [exp env eval]
+  (eval (apply let*->nested-lets exp) env))
+
+(def special-forms-with-let*
+  (assoc special-forms-with-let :let* eval-let*))
+
+;;; Exercise 4.8
+
+(defn named-let->combination
+  [& args]
+  (if (symbol? (first args))
+    (let [[name bindings & body] args]
+      (cons
+       (list
+        (cons 'lambda
+              (cons '()
+                    (list (cons 'define
+                                (cons (cons name
+                                            (map first bindings))
+                                      body))
+                          name))))
+       (map second bindings)))
+    (apply let->combination args)))
+
+(defn eval-named-let
+  [exp env eval]
+  (eval (apply named-let->combination exp) env))
+
+(def special-forms-with-named-let
+  (assoc pristine-special-forms :let eval-named-let))
+
+;; (def eval-1 (make-eval pristine-special-forms applicative-apply))
+;; (def env (make-env pristine-primitives))
+
+;; Exercise 4.14
+
+;; Because the procedure in our evaluator is different from the
+;; underlying language. Therefore, it cannot be called by
+;; system version of procedures.
+
+;; Exercise 4.15
+
+;; It is a paradox.
+;; If `(try try)` returns, it means `try` halts on `try`.
+;; But it also means that `halts?` returns false, which means
+;; `try` is not halt-able.
+;; And vice versa.
+
+;; Exercise 4.16
+
+(def env-with-unassigned-behavior
+  (merge base-env-behavior
+         {:lookup
+          (fn [this var]
+            (loop [env this]
+              (let [bindings @(.bindings env)
+                    enclose   (.enclose  env)]
+                (if (contains? bindings var)
+                  (let [val (get bindings var)]
+                    (if (= val '*unassigned*)
+                      (throw (Exception.
+                              (print-str "Unassigned variable:" var)))
+                      val))
+                  (if-not enclose
+                    (throw (Exception.
+                            (print-str "Unbound variable:" var)))
+                    (recur enclose))))))}))
+
+(deftype UnassignableEnv [bindings enclose])
+(extend UnassignableEnv
+  Environmental
+  env-with-unassigned-behavior)
+
+(defn make-unassignable-env
+  ([bindings]
+     (make-unassignable-env bindings nil))
+  ([bindings enclose]
+     (UnassignableEnv. (atom bindings) enclose)))
+
+;; Exercise 4.18
+
+;; It doesn't work. `u` and `v` are both assigned when `<e1>` and `<e2>`
+;; are evaluated in the `let` form.
+
+;; Exercise 4.19
+
+(defn letrec->let
+  [bindings & body]
+  (let [names  (map first  bindings)
+        values (map second bindings)]
+    (cons 'let
+          (cons (map #(list % ''*unassigned*) names)
+                ((fn ! [bindings]
+                   (if (empty? bindings)
+                     body
+                     (let [[[k v] & next] bindings]
+                       (cons (list 'set! k v)
+                             (! next)))))
+                 bindings)))))
+
+(defn eval-letrec
+  [exp env eval]
+  (eval (apply letrec->let exp) env))
+
+(def special-forms-with-letrec
+  (assoc special-forms-with-let :letrec eval-letrec))
+
+;; Exercise 4.21
+
+(defn recursive-even?
+  [x]
+  ((fn [even? odd?]
+     (even? even? odd? x))
+   (fn [ev? od? n]
+     (if (zero? n) true (od? ev? od? (dec n))))
+   (fn [ev? od? n]
+     (if (zero? n) false (ev? ev? od? (dec n))))))

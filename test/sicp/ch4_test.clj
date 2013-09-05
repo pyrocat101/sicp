@@ -16,11 +16,8 @@
     (is (= (eval-1 '(if nil 'a 'b) env) 'b))
     (is (= (eval-1 '(begin 1 2 3 4) env) 4))
     (is (= (eval-1 '(begin (define foo 666) foo) env) 666))
-    (is (= (eval-1 '(begin (define foo 555)
-                           (set! foo 666)
-                           foo)
-                   env)
-           666))
+    (is (= (eval-1 '(begin (define (add a b) (+ a b)) (add 3 4)) env) 7))
+    (is (= (eval-1 '(begin (define foo 555) (set! foo 666) foo) env) 666))
     (is (= (eval-1 '(cond (false 1) (else 2 3)) env) 3))))
 
 (deftest test-eval-and-or
@@ -38,4 +35,62 @@
 (deftest test-eval-let
   (let [eval-1 (make-eval special-forms-with-let applicative-apply)
         env (make-env pristine-primitives)]
-    (is (= (eval-1 '(let ((a 1) (b 2) (c 3)) (+ a b c)) env) 6))))
+    (is (= (eval-1 '(let ((a 1)
+                          (b 2)
+                          (c 3))
+                      (+ a b c))
+                   env)
+           6))))
+
+(deftest test-eval-let*
+  (let [eval-1 (make-eval special-forms-with-let* applicative-apply)
+        env (make-env pristine-primitives)]
+    (is (= (eval-1 '(let* ((x 3)
+                           (y (+ x 2))
+                           (z (+ x y 5)))
+                          (* x z))
+                   env)
+           39))))
+
+(deftest test-named-let
+  (let [eval-1 (make-eval special-forms-with-named-let applicative-apply)
+        env (make-env pristine-primitives)]
+    (is (= (eval-1 '(begin
+                     (define (fib n)
+                       (let fib-iter ((a 1)
+                                      (b 0)
+                                      (count n))
+                            (if (= count 0)
+                              b
+                              (fib-iter (+ a b) a (- count 1)))))
+                     (fib 4))
+                   env)
+           3))))
+
+(deftest test-*unassigned*
+  (let [eval-1 (make-eval pristine-special-forms applicative-apply)
+        env (make-unassignable-env pristine-primitives)]
+    (is (thrown-with-msg?
+         Exception
+         #"Unassigned variable: foo"
+         (eval-1 '(begin
+                   (define foo '*unassigned*)
+                   foo)
+                 env)))))
+
+(deftest test-letrec
+  (let [eval-1 (make-eval special-forms-with-letrec applicative-apply)
+        env (make-env pristine-primitives)]
+    (is (= (eval-1 '(letrec ((fact
+                              (lambda (n)
+                                      (if (= n 1)
+                                        1
+                                        (* n (fact (- n 1)))))))
+                            (fact 10))
+                   env)
+           3628800))))
+
+(deftest test-recursive-even?
+  (is (true?  (recursive-even? 0)))
+  (is (true?  (recursive-even? 2)))
+  (is (false? (recursive-even? 1))))
