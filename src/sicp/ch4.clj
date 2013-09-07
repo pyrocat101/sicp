@@ -132,13 +132,19 @@
   [[v o] env eval]
   (env-set! env v (eval o env)))
 
+(defn desugar-define
+  [[name & params] & body]
+  (cons 'define
+        (list name
+              (cons 'lambda
+                    (cons params body)))))
+
 (defn eval-define
   [exp env eval]
   (if (symbol? (first exp))
     (let [[v o] exp]
       (define! env v (eval o env)))
-    (let [[[name & params] & body] exp]
-      (define! env name (Procedure. params body env)))))
+    (eval (apply desugar-define exp) env)))
 
 (defn eval-if
   [[pred conseq alt] env eval]
@@ -467,11 +473,26 @@
 ;;    Cy's version: (p1 1) => (1 2), (p2 1) => (1 2)
 ;; c. `actual-value` acts the same as `eval` on primitive procedures.
 
-;; Exercise 4.31
-
-(defrecord Thunk [exp env])
+;; Exercise 4.32
 
 (declare force-it actual-value)
+
+(defprotocol Thinkable
+  (force-thunk [_]))
+
+(defrecord SimpleThunk [exp env])
+(defrecord CachedThunk [exp env])
+
+(defn- force-thunk [this]
+  (actual-value (.exp this) (.env this)))
+
+(extend SimpleThunk
+  Thinkable
+  {:force-thunk force-thunk})
+
+(extend CachedThunk
+  Thinkable
+  {:force-thunk (memoize force-thunk)})
 
 (defn actual-value
   [exp env eval]
@@ -479,8 +500,8 @@
 
 (defn force-it
   [obj eval]
-  (if (instance? Thunk obj)
-    (actual-value (.exp obj) (.env obj) eval)
+  (if (satisfies? Thinkable obj)
+    (force-thunk obj)
     obj))
 
 (deftype NonStrictPrimitive [fn]
@@ -493,8 +514,8 @@
   (my-apply [this args env eval]
     (let [env (my-extend (.env this)
                          (zipmap (.params this)
-                                 (map #(Thunk. % env) args)))]
-      ((eval-seq eval) (.body this env)))))
+                                 (map #(CachedThunk. % env) args)))]
+      ((eval-seq eval) (.body this) env))))
 
 (defn normative-apply
   [exp env eval]
@@ -502,7 +523,7 @@
         args (rest exp)]
     (my-apply proc args env eval)))
 
-(defn eval-lambda-lazy
+(defn eval-lambda-non-strict
   [[params & body] env _]
   (NonStrictProcedure. params body env))
 
@@ -514,20 +535,49 @@
 
 (def pristine-special-forms-lazy
   (assoc pristine-special-forms
-    :lambda eval-lambda-lazy
+    :lambda eval-lambda-non-strict
     :if     eval-if-lazy))
 
-(def pristine-primitives-lazy
+(def pristine-primitives-non-strict
   (let [m pristine-primitives-map]
     (into {} (for [[k v] m] [k (NonStrictPrimitive. v)]))))
 
 (def pristine-eval-lazy
   (make-eval pristine-special-forms-lazy normative-apply))
 
-;; (let [eval-1 pristine-eval-lazy
-;;       env (make-env pristine-primitives-lazy)]
-;;   (print (eval-1 '(begin
-;;                    (define (try a b)
-;;                      (if (= a 0) 1 b))
-;;                    (try 0 (/ 1 0)))
-;;                  env)))
+(defn maybe-delay
+  [arg param env eval]
+  (cond (symbol? param) (actual-value arg env eval)
+        (= 'lazy (second param)) (SimpleThunk. arg env)
+        (= 'lazy-memo (second param)) (CachedThunk. arg env)))
+
+(defn get-param-symbol
+  [params]
+  (if (symbol? param)
+    param
+    (first param)))
+
+(deftype MixedProcedure [params body env]
+  Applicable
+  (my-apply [this args env eval]
+    (let [params (.params this)
+          env (my-extend (.env this)
+                         (zipmap (map get-param-symbol params)
+                                 (map #(maybe-delay %1 %2 env eval)
+                                      args
+                                      params)))]
+      ((eval-seq eval) (.body this) env))))
+
+(defn eval-lambda-mixed
+  [[params & body] env _]
+  (MixedProcedure. params body env))
+
+(def pristine-special-forms-mixed
+  (assoc pristine-special-forms
+    :lambda eval-lambda-mixed))
+
+(def pristine-eval-mixed
+  (make-eval pristine-special-forms-mixed normative-apply))
+
+(def eval-1 pristine-eval-mixed)
+(def env (make-env pristine-primitives-non-strict))

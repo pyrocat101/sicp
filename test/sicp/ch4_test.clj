@@ -103,11 +103,33 @@
 
 (deftest test-lazy-eval
   (let [eval-1 pristine-eval-lazy
-        env (make-env pristine-primitives-lazy)]
+        env (make-env pristine-primitives-non-strict)]
     (is (= (eval-1
             '(begin
               (define (try a b)
                 (if (= a 0) 1 b))
               (try 0 (/ 1 0)))
+            env)
+           1))))
+
+(deftest test-mixed-eval
+  (let [eval-1 pristine-eval-mixed
+        env (make-env pristine-primitives-non-strict)]
+    (is (= (eval-1
+            '(begin
+              (define (f a (b lazy) c)
+                (if a b c))
+              (f false (/ 1 0) 42))
+            env)
+           42))
+    (is (= (eval-1
+            '(begin
+              (define foo 0)
+              (define (f (b lazy-memo))
+                b
+                b
+                'ok)
+              (f (set! foo (+ foo 1)))
+              foo)
             env)
            1))))
