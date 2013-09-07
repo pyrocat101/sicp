@@ -79,7 +79,7 @@
   Applicable
   (my-apply [this args env eval]
     (let [env (my-extend (.env this)
-                      (zipmap (.params this) args))]
+                         (zipmap (.params this) args))]
       ((eval-seq eval) (.body this) env))))
 
 (deftype Primitive [fn]
@@ -144,7 +144,7 @@
   [[pred conseq alt] env eval]
   (if (eval pred env)
     (eval conseq env)
-    (eval alt env)))
+    (eval alt    env)))
 
 (defn eval-lambda
   [[params & body] env _]
@@ -177,16 +177,19 @@
 
 ;; basic primitives
 
+(def pristine-primitives-map
+  {'car   first
+   'cdr   rest
+   'cons  cons
+   'null? nil?
+   '+     +
+   '-     -
+   '*     *
+   '/     /
+   '=     =} )
+
 (def pristine-primitives
-  (let [m {'car   first
-           'cdr   rest
-           'cons  cons
-           'null? nil?
-           '+     +
-           '-     -
-           '*     *
-           '/     /
-           '=     =}]
+  (let [m pristine-primitives-map]
     (into {} (for [[k v] m] [k (Primitive. v)]))))
 
 ;; basic special form
@@ -443,3 +446,88 @@
 ;; count
 ;; ;;; L-Eval value:
 ;; 2
+
+;; Defining `w` causes outer `id` to be evaluated.
+;; Printing the value of `w` causes inner `id` to be evaluated.
+
+;; Exercise 4.28
+
+;; cannot apply a thunk on the arguments:
+;; ((lambda (x) x) 42)
+
+;; Exercise 4.29
+
+;; With memorization, `(id 10)` is called once.
+;; Without memorization, `(id 10)` is called twice.
+
+;; Exercise 4.30
+
+;; a. Ben is right because `display` is a primitive procedure.
+;; b. original: (p1 1) => (1 2), (p2 1) => 1
+;;    Cy's version: (p1 1) => (1 2), (p2 1) => (1 2)
+;; c. `actual-value` acts the same as `eval` on primitive procedures.
+
+;; Exercise 4.31
+
+(defrecord Thunk [exp env])
+
+(declare force-it actual-value)
+
+(defn actual-value
+  [exp env eval]
+  (force-it (eval exp env) eval))
+
+(defn force-it
+  [obj eval]
+  (if (instance? Thunk obj)
+    (actual-value (.exp obj) (.env obj) eval)
+    obj))
+
+(deftype NonStrictPrimitive [fn]
+  Applicable
+  (my-apply [this args env eval]
+    (apply (.fn this) (map #(actual-value % env eval) args))))
+
+(deftype NonStrictProcedure [params body env]
+  Applicable
+  (my-apply [this args env eval]
+    (let [env (my-extend (.env this)
+                         (zipmap (.params this)
+                                 (map #(Thunk. % env) args)))]
+      ((eval-seq eval) (.body this env)))))
+
+(defn normative-apply
+  [exp env eval]
+  (let [proc (actual-value (first exp) env eval)
+        args (rest exp)]
+    (my-apply proc args env eval)))
+
+(defn eval-lambda-lazy
+  [[params & body] env _]
+  (NonStrictProcedure. params body env))
+
+(defn eval-if-lazy
+  [[pred conseq alt] env eval]
+  (if (actual-value pred env eval)
+    (eval conseq env)
+    (eval alt    env)))
+
+(def pristine-special-forms-lazy
+  (assoc pristine-special-forms
+    :lambda eval-lambda-lazy
+    :if     eval-if-lazy))
+
+(def pristine-primitives-lazy
+  (let [m pristine-primitives-map]
+    (into {} (for [[k v] m] [k (NonStrictPrimitive. v)]))))
+
+(def pristine-eval-lazy
+  (make-eval pristine-special-forms-lazy normative-apply))
+
+;; (let [eval-1 pristine-eval-lazy
+;;       env (make-env pristine-primitives-lazy)]
+;;   (print (eval-1 '(begin
+;;                    (define (try a b)
+;;                      (if (= a 0) 1 b))
+;;                    (try 0 (/ 1 0)))
+;;                  env)))

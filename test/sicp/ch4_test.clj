@@ -100,3 +100,14 @@
         env (make-env pristine-primitives)]
     (is (= (eval-1 '(unless true  'a 'b) env) 'b))
     (is (= (eval-1 '(unless false 'a 'b) env) 'a))))
+
+(deftest test-lazy-eval
+  (let [eval-1 pristine-eval-lazy
+        env (make-env pristine-primitives-lazy)]
+    (is (= (eval-1
+            '(begin
+              (define (try a b)
+                (if (= a 0) 1 b))
+              (try 0 (/ 1 0)))
+            env)
+           1))))
