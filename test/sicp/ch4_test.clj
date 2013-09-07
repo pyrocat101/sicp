@@ -3,7 +3,7 @@
             [sicp.ch4 :refer :all]))
 
 (deftest test-pristine-eval
-  (let [eval-1 (make-eval pristine-special-forms applicative-apply)
+  (let [eval-1 pristine-eval
         env (make-env pristine-primitives)]
     (is (= (eval-1 1 env) 1))
     (is (= (eval-1 "s" env) "s"))
@@ -21,7 +21,7 @@
     (is (= (eval-1 '(cond (false 1) (else 2 3)) env) 3))))
 
 (deftest test-eval-and-or
-  (let [eval-1 (make-eval special-forms-with-and-or applicative-apply)
+  (let [eval-1 eval-with-and-or
         env (make-env pristine-primitives)]
     (is (= (eval-1 '(and 1) env) 1))
     (is (= (eval-1 '(and nil 1) env) nil))
@@ -33,7 +33,7 @@
     (is (= (eval-1 '(or nil false) env) false))))
 
 (deftest test-eval-let
-  (let [eval-1 (make-eval special-forms-with-let applicative-apply)
+  (let [eval-1 eval-with-let
         env (make-env pristine-primitives)]
     (is (= (eval-1 '(let ((a 1)
                           (b 2)
@@ -43,7 +43,7 @@
            6))))
 
 (deftest test-eval-let*
-  (let [eval-1 (make-eval special-forms-with-let* applicative-apply)
+  (let [eval-1 eval-with-let*
         env (make-env pristine-primitives)]
     (is (= (eval-1 '(let* ((x 3)
                            (y (+ x 2))
@@ -53,7 +53,7 @@
            39))))
 
 (deftest test-named-let
-  (let [eval-1 (make-eval special-forms-with-named-let applicative-apply)
+  (let [eval-1 eval-with-named-let
         env (make-env pristine-primitives)]
     (is (= (eval-1 '(begin
                      (define (fib n)
@@ -68,7 +68,7 @@
            3))))
 
 (deftest test-*unassigned*
-  (let [eval-1 (make-eval pristine-special-forms applicative-apply)
+  (let [eval-1 pristine-eval
         env (make-unassignable-env pristine-primitives)]
     (is (thrown-with-msg?
          Exception
@@ -79,7 +79,7 @@
                  env)))))
 
 (deftest test-letrec
-  (let [eval-1 (make-eval special-forms-with-letrec applicative-apply)
+  (let [eval-1 eval-with-leterec
         env (make-env pristine-primitives)]
     (is (= (eval-1 '(letrec ((fact
                               (lambda (n)
@@ -94,3 +94,9 @@
   (is (true?  (recursive-even? 0)))
   (is (true?  (recursive-even? 2)))
   (is (false? (recursive-even? 1))))
+
+(deftest test-unless
+  (let [eval-1 eval-with-unless
+        env (make-env pristine-primitives)]
+    (is (= (eval-1 '(unless true  'a 'b) env) 'b))
+    (is (= (eval-1 '(unless false 'a 'b) env) 'a))))

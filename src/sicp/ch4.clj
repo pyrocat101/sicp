@@ -200,6 +200,11 @@
    :begin   eval-begin
    :cond    eval-cond})
 
+;; pristine evaluator
+
+(def pristine-eval
+  (make-eval pristine-special-forms applicative-apply))
+
 ;; Exercise 4.1
 
 (defn list-of-values-ltr [exps]
@@ -237,6 +242,9 @@
 (def special-forms-with-and-or
   (assoc pristine-special-forms :and eval-and :or eval-or))
 
+(def eval-with-and-or
+  (make-eval special-forms-with-and-or applicative-apply))
+
 ;; Exercise 4.6
 
 (defn let->combination
@@ -251,6 +259,9 @@
 
 (def special-forms-with-let
   (assoc pristine-special-forms :let eval-let))
+
+(def eval-with-let
+  (make-eval special-forms-with-let applicative-apply))
 
 ;; Exercise 4.7
 
@@ -276,6 +287,9 @@
 (def special-forms-with-let*
   (assoc special-forms-with-let :let* eval-let*))
 
+(def eval-with-let*
+  (make-eval special-forms-with-let* applicative-apply))
+
 ;;; Exercise 4.8
 
 (defn named-let->combination
@@ -300,6 +314,9 @@
 
 (def special-forms-with-named-let
   (assoc pristine-special-forms :let eval-named-let))
+
+(def eval-with-named-let
+  (make-eval special-forms-with-named-let applicative-apply))
 
 ;; (def eval-1 (make-eval pristine-special-forms applicative-apply))
 ;; (def env (make-env pristine-primitives))
@@ -377,6 +394,9 @@
 (def special-forms-with-letrec
   (assoc special-forms-with-let :letrec eval-letrec))
 
+(def eval-with-leterec
+  (make-eval special-forms-with-letrec applicative-apply))
+
 ;; Exercise 4.21
 
 (defn recursive-even?
@@ -387,3 +407,39 @@
      (if (zero? n) true (od? ev? od? (dec n))))
    (fn [ev? od? n]
      (if (zero? n) false (ev? ev? od? (dec n))))))
+
+;; Exercise 4.25
+
+;; the expression `(* n (factorial (- n 1)))` will be evaluated endlessly.
+
+;; Exercise 4.26
+
+(defn unless->if
+  [pred conseq alt]
+  (list 'if pred alt conseq))
+
+(defn eval-unless
+  [exp env eval]
+  (eval (apply unless->if exp) env))
+
+(def special-forms-with-unless
+  (assoc pristine-special-forms :unless eval-unless))
+
+(def eval-with-unless
+  (make-eval special-forms-with-unless applicative-apply))
+
+;; Exercise 4.27
+
+;; (define w (id (id 10)))
+;; ;;; L-Eval input:
+;; count
+;; ;;; L-Eval output:
+;; 1
+;; ;;; L-Eval input:
+;; w
+;; ;;; L-Eval value:
+;; 10
+;; ;;; L-Eval input:
+;; count
+;; ;;; L-Eval value:
+;; 2
