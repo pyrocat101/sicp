@@ -579,6 +579,3 @@
 
 (def pristine-eval-mixed
   (make-eval pristine-special-forms-mixed normative-apply))
-
-(def eval-1 pristine-eval-mixed)
-(def env (make-env pristine-primitives-non-strict))
