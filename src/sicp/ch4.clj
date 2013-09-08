@@ -10,6 +10,7 @@
 
 (defn eval-seq [eval]
   (fn [coll env]
+    #spy/d @(.bindings env)
     (if (empty? coll)
       nil
       (loop [exps coll]
@@ -478,21 +479,21 @@
 (declare force-it actual-value)
 
 (defprotocol Thinkable
-  (force-thunk [_]))
+  (force-thunk [_ eval]))
 
-(defrecord SimpleThunk [exp env])
-(defrecord CachedThunk [exp env])
+(deftype SimpleThunk [exp env])
+(deftype CachedThunk [exp env])
 
-(defn- force-thunk [this]
-  (actual-value (.exp this) (.env this)))
+(defn- force-simple-thunk [this eval]
+  (actual-value (.exp this) (.env this) eval))
 
 (extend SimpleThunk
   Thinkable
-  {:force-thunk force-thunk})
+  {:force-thunk force-simple-thunk})
 
 (extend CachedThunk
   Thinkable
-  {:force-thunk (memoize force-thunk)})
+  {:force-thunk (memoize force-simple-thunk)})
 
 (defn actual-value
   [exp env eval]
@@ -501,7 +502,7 @@
 (defn force-it
   [obj eval]
   (if (satisfies? Thinkable obj)
-    (force-thunk obj)
+    (force-thunk obj eval)
     obj))
 
 (deftype NonStrictPrimitive [fn]
@@ -552,7 +553,7 @@
         (= 'lazy-memo (second param)) (CachedThunk. arg env)))
 
 (defn get-param-symbol
-  [params]
+  [param]
   (if (symbol? param)
     param
     (first param)))

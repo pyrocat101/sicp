@@ -117,19 +117,23 @@
         env (make-env pristine-primitives-non-strict)]
     (is (= (eval-1
             '(begin
-              (define (f a (b lazy) c)
-                (if a b c))
-              (f false (/ 1 0) 42))
+              (define count 0)
+              (define (id x)
+                (set! count (+ count 1))
+                x)
+              (define (square (x lazy)) (* x x))
+              (square (id 20))
+              count)
             env)
-           42))
+           2))
     (is (= (eval-1
             '(begin
-              (define foo 0)
-              (define (f (b lazy-memo))
-                b
-                b
-                'ok)
-              (f (set! foo (+ foo 1)))
-              foo)
+              (define count 0)
+              (define (id x)
+                (set! count (+ count 1))
+                x)
+              (define (square (x lazy-memo)) (* x x))
+              (square (id 20))
+              count)
             env)
            1))))
