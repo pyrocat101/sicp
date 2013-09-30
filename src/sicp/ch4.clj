@@ -10,7 +10,6 @@
 
 (defn eval-seq [eval]
   (fn [coll env]
-    #spy/d @(.bindings env)
     (if (empty? coll)
       nil
       (loop [exps coll]
@@ -131,7 +130,8 @@
 
 (defn eval-assign
   [[v o] env eval]
-  (env-set! env v (eval o env)))
+  (env-set! env v (eval o env))
+  'ok)
 
 (defn desugar-define
   [[name & params] & body]
@@ -145,7 +145,8 @@
   (if (symbol? (first exp))
     (let [[v o] exp]
       (define! env v (eval o env)))
-    (eval (apply desugar-define exp) env)))
+    (eval (apply desugar-define exp) env))
+  'ok)
 
 (defn eval-if
   [[pred conseq alt] env eval]
@@ -579,3 +580,177 @@
 
 (def pristine-eval-mixed
   (make-eval pristine-special-forms-mixed normative-apply))
+
+;; amb evaluator
+
+(defn make-amb-analyze
+  [analyzors]
+  (fn ! [exp]
+    (cond (self-eval? exp)
+          (fn [env succeed fail]
+            (succeed exp fail))
+          (variable? exp)
+          (fn [env succeed fail]
+            (succeed (lookup env exp) fail))
+          :else
+          (let [[op & rest] exp
+                op (keyword op)]
+            (if (contains? analyzors op)
+              ;; special form analyzors
+              ((get analyzors op) rest !)
+              ;; application
+              (amb-analyze-apply exp !))))))
+
+(defn analyze-seq
+  [analyze]
+  (fn [coll]
+    (let [sequentially
+          (fn [a b]
+            (fn [env succeed fail]
+              (a env
+                 (fn [a-val fail]
+                   (b env succeed fail))
+                 fail)))
+          procs (map analyze coll)]
+      (if (empty? procs)
+        (throw (Exception. "Empty sequence -- ANALYZE"))
+        (loop [head (first procs)
+               next (rest  procs)]
+          (if (empty? next)
+            head
+            (recur (sequentially head (first next))
+                   (rest next))))))))
+
+;; basic amb special form analyzors
+
+(defn amb-analyze-quote [[x] _]
+  (fn [env succeed fail]
+    (succeed x fail)))
+
+(defn amb-analyze-lambda
+  [[params & body] analyze]
+  (fn [env succeed fail]
+    (succeed (Procedure. params
+                         ((analyze-seq analyze) body)
+                         env)
+             fail)))
+
+(defn amb-analyze-if
+  [[pred conseq alt] analyze]
+  (let [pred   (analyze pred)
+        conseq (analyze conseq)
+        alt    (analyze alt)]
+    (fn [env succeed fail]
+      (pred env
+            ;; success continuation
+            (fn [pred fail]
+              (if pred
+                (conseq env succeed fail)
+                (alt    env succeed fail)))
+            ;; failure continuation
+            fail))))
+
+(defn amb-analyze-define
+  [exp analyze]
+  (if (symbol? (first exp))
+    (let [[v o] exp
+          o (analyze o)]
+      (fn [env succeed fail]
+        (o env
+           (fn [val fail]
+             (define! env v val)
+             (succeed 'ok fail))
+           fail)))
+    (analyze (apply desugar-define exp))))
+
+(defn amb-analyze-assign
+  [[v o] analyze]
+  (let [o (analyze o)]
+    (fn [env succeed fail]
+      (o env
+         (fn [val fail]
+           (let [old-val (lookup v env)]
+             (env-set! env v val)
+             (succeed 'ok
+                      ;; undo assignment
+                      (fn []
+                        (env-set! env v old-val)
+                        (fail)))))
+         fail))))
+
+(defprotocol AmbApplicable
+  (amb-apply [this args succeed fail]))
+
+(extend-protocol AmbApplicable
+  Procedure
+  (amb-apply [this args succeed fail]
+    (let [env (my-extend (.env this)
+                         (zipmap (.params this) args))]
+      ((.body this) env succeed fail)))
+  Primitive
+  (amb-apply [this args succeed fail]
+    (succeed (my-apply this args nil nil) fail)))
+
+(defn amb-get-args
+  [aprocs env succeed fail]
+  (if (empty? aprocs)
+    (succeed '() fail)
+    ((first aprocs)
+     env
+     (fn [arg fail]
+       (amb-get-args (rest aprocs)
+                     env
+                     (fn [args fail]
+                       (succeed (cons arg args)
+                                fail))
+                     fail))
+     fail)))
+
+(defn amb-analyze-apply
+  [exp analyze]
+  (let [[proc & args] (map analyze exp)]
+    (fn [env succeed fail]
+      (proc env
+            (fn [proc fail]
+              (amb-get-args args
+                            env
+                            (fn [args fail]
+                              (amb-apply proc
+                                         args
+                                         succeed
+                                         fail))
+                            fail))
+            fail))))
+
+(defn analyze-amb
+  [choices analyze]
+  (let [cprocs (map analyze choices)]
+    (fn [env succeed fail]
+      (letfn [(try-next [choices]
+                (if (empty? choices)
+                  (fail)
+                  ((first choices)
+                   env
+                   succeed
+                   (fn []
+                     (try-next (rest choices))))))]
+        (try-next cprocs)))))
+
+(defn amb-analyze-begin
+  [coll analyze]
+  ((analyze-seq analyze) coll))
+
+(def pristine-analyzors
+  {:quote  amb-analyze-quote
+   :set!   amb-analyze-assign
+   :define amb-analyze-define
+   :if     amb-analyze-if
+   :lambda amb-analyze-lambda
+   :begin  amb-analyze-begin
+   :amb    analyze-amb})
+
+(defn amb-eval [exp env succeed fail]
+  (let [analyze (make-amb-analyze pristine-analyzors)]
+     ((analyze exp) env succeed fail)))
+
+;; Exercise 4.35
