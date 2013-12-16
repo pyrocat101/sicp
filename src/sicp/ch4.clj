@@ -3,8 +3,7 @@
 
 ;;; Namespace and dependencies
 
-(ns sicp.ch4
-  (:require [clojure.core.match :refer (match)]))
+(ns sicp.ch4)
 
 ;;; a basic evaluator
 
@@ -23,26 +22,26 @@
 
 (defprotocol Environmental
   "Something that is environment-friendly"
-  (my-extend [this bindings])
-  (lookup [this var])
-  (env-set! [this var value])
-  (define! [this var value]))
+  (env-extend  [this bindings])
+  (env-lookup  [this var])
+  (env-set!    [this var value])
+  (env-define! [this var value]))
 
 (deftype Env [bindings enclose])
 
 (def base-env-behavior
-  {:my-extend (fn [this bindings]
-                (Env. (atom bindings) this))
-   :lookup (fn [this var]
-             (loop [env this]
-               (let [bindings @(.bindings env)
-                     enclose   (.enclose  env)]
-                 (if (contains? bindings var)
-                   (get bindings var)
-                   (if-not enclose
-                     (throw (Exception.
-                             (print-str "Unbound variable:" var)))
-                     (recur enclose))))))
+  {:env-extend (fn [this bindings]
+                 (Env. (atom bindings) this))
+   :env-lookup (fn [this var]
+                 (loop [env this]
+                   (let [bindings @(.bindings env)
+                         enclose   (.enclose  env)]
+                     (if (contains? bindings var)
+                       (get bindings var)
+                       (if-not enclose
+                         (throw (Exception.
+                                 (print-str "Unbound variable:" var)))
+                         (recur enclose))))))
    :env-set! (fn [this var value]
                (loop [env this]
                  (let [bindings (.bindings env)
@@ -55,9 +54,9 @@
                        (throw (Exception.
                                (print-str "Unbound variable:" var)))
                        (recur enclose))))))
-   :define! (fn [this var value]
-              (swap! (.bindings this) assoc var value)
-              var)})
+   :env-define! (fn [this var value]
+                  (swap! (.bindings this) assoc var value)
+                  var)})
 
 (extend Env
   Environmental
@@ -71,19 +70,19 @@
 
 ;; procedure and primitive
 
-(defprotocol Applicable
+(defprotocol Appliable
   "Something that can be applied"
   (my-apply [this args env eval]))
 
 (deftype Procedure [params body env]
-  Applicable
+  Appliable
   (my-apply [this args env eval]
-    (let [env (my-extend (.env this)
-                         (zipmap (.params this) args))]
+    (let [env (env-extend (.env this)
+                          (zipmap (.params this) args))]
       ((eval-seq eval) (.body this) env))))
 
 (deftype Primitive [fn]
-  Applicable
+  Appliable
   (my-apply [this args env eval]
     (apply (.fn this) args)))
 
@@ -113,7 +112,7 @@
   [special-forms apply-fn]
   (fn ! [exp env]
     (cond (self-eval? exp) exp
-          (variable? exp)  (lookup env exp)
+          (variable? exp)  (env-lookup env exp)
           ;; special forms
           :else
           (let [[op & rest] exp
@@ -144,7 +143,7 @@
   [exp env eval]
   (if (symbol? (first exp))
     (let [[v o] exp]
-      (define! env v (eval o env)))
+      (env-define! env v (eval o env)))
     (eval (apply desugar-define exp) env))
   'ok)
 
@@ -189,7 +188,9 @@
   {'car   first
    'cdr   rest
    'cons  cons
-   'null? nil?
+   'null? empty?
+   'not   not
+   'list  list
    '+     +
    '-     -
    '*     *
@@ -350,7 +351,7 @@
 
 (def env-with-unassigned-behavior
   (merge base-env-behavior
-         {:lookup
+         {:env-lookup
           (fn [this var]
             (loop [env this]
               (let [bindings @(.bindings env)
@@ -507,16 +508,16 @@
     obj))
 
 (deftype NonStrictPrimitive [fn]
-  Applicable
+  Appliable
   (my-apply [this args env eval]
     (apply (.fn this) (map #(actual-value % env eval) args))))
 
 (deftype NonStrictProcedure [params body env]
-  Applicable
+  Appliable
   (my-apply [this args env eval]
-    (let [env (my-extend (.env this)
-                         (zipmap (.params this)
-                                 (map #(CachedThunk. % env) args)))]
+    (let [env (env-extend (.env this)
+                          (zipmap (.params this)
+                                  (map #(CachedThunk. % env) args)))]
       ((eval-seq eval) (.body this) env))))
 
 (defn normative-apply
@@ -560,14 +561,14 @@
     (first param)))
 
 (deftype MixedProcedure [params body env]
-  Applicable
+  Appliable
   (my-apply [this args env eval]
     (let [params (.params this)
-          env (my-extend (.env this)
-                         (zipmap (map get-param-symbol params)
-                                 (map #(maybe-delay %1 %2 env eval)
-                                      args
-                                      params)))]
+          env (env-extend (.env this)
+                          (zipmap (map get-param-symbol params)
+                                  (map #(maybe-delay %1 %2 env eval)
+                                       args
+                                       params)))]
       ((eval-seq eval) (.body this) env))))
 
 (defn eval-lambda-mixed
@@ -583,6 +584,8 @@
 
 ;; amb evaluator
 
+(declare amb-analyze-apply)
+
 (defn make-amb-analyze
   [analyzors]
   (fn ! [exp]
@@ -591,7 +594,7 @@
             (succeed exp fail))
           (variable? exp)
           (fn [env succeed fail]
-            (succeed (lookup env exp) fail))
+            (succeed (env-lookup env exp) fail))
           :else
           (let [[op & rest] exp
                 op (keyword op)]
@@ -601,7 +604,7 @@
               ;; application
               (amb-analyze-apply exp !))))))
 
-(defn analyze-seq
+(defn amb-analyze-seq
   [analyze]
   (fn [coll]
     (let [sequentially
@@ -631,7 +634,7 @@
   [[params & body] analyze]
   (fn [env succeed fail]
     (succeed (Procedure. params
-                         ((analyze-seq analyze) body)
+                         ((amb-analyze-seq analyze) body)
                          env)
              fail)))
 
@@ -643,8 +646,8 @@
     (fn [env succeed fail]
       (pred env
             ;; success continuation
-            (fn [pred fail]
-              (if pred
+            (fn [pred-value fail]
+              (if pred-value
                 (conseq env succeed fail)
                 (alt    env succeed fail)))
             ;; failure continuation
@@ -658,7 +661,7 @@
       (fn [env succeed fail]
         (o env
            (fn [val fail]
-             (define! env v val)
+             (env-define! env v val)
              (succeed 'ok fail))
            fail)))
     (analyze (apply desugar-define exp))))
@@ -669,7 +672,7 @@
     (fn [env succeed fail]
       (o env
          (fn [val fail]
-           (let [old-val (lookup v env)]
+           (let [old-val (env-lookup env v)]
              (env-set! env v val)
              (succeed 'ok
                       ;; undo assignment
@@ -678,14 +681,14 @@
                         (fail)))))
          fail))))
 
-(defprotocol AmbApplicable
+(defprotocol AmbAppliable
   (amb-apply [this args succeed fail]))
 
-(extend-protocol AmbApplicable
+(extend-protocol AmbAppliable
   Procedure
   (amb-apply [this args succeed fail]
-    (let [env (my-extend (.env this)
-                         (zipmap (.params this) args))]
+    (let [env (env-extend (.env this)
+                          (zipmap (.params this) args))]
       ((.body this) env succeed fail)))
   Primitive
   (amb-apply [this args succeed fail]
@@ -722,7 +725,7 @@
                             fail))
             fail))))
 
-(defn analyze-amb
+(defn amb-analyze-amb
   [choices analyze]
   (let [cprocs (map analyze choices)]
     (fn [env succeed fail]
@@ -732,25 +735,29 @@
                   ((first choices)
                    env
                    succeed
-                   (fn []
-                     (try-next (rest choices))))))]
+                   #(try-next (rest choices)))))]
         (try-next cprocs)))))
 
 (defn amb-analyze-begin
   [coll analyze]
-  ((analyze-seq analyze) coll))
+  ((amb-analyze-seq analyze) coll))
 
-(def pristine-analyzors
+(defn amb-analyze-let
+  [exp analyze]
+  (analyze (apply let->combination exp)))
+
+(def pristine-amb-analyzors
   {:quote  amb-analyze-quote
    :set!   amb-analyze-assign
    :define amb-analyze-define
    :if     amb-analyze-if
    :lambda amb-analyze-lambda
    :begin  amb-analyze-begin
-   :amb    analyze-amb})
+   :let    amb-analyze-let
+   :amb    amb-analyze-amb})
 
 (defn amb-eval [exp env succeed fail]
-  (let [analyze (make-amb-analyze pristine-analyzors)]
-     ((analyze exp) env succeed fail)))
+  (let [analyze (make-amb-analyze pristine-amb-analyzors)]
+    ((analyze exp) env succeed fail)))
 
 ;; Exercise 4.35
