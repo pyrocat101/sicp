@@ -1,6 +1,7 @@
 (ns sicp.ch4_test
   (:require [clojure.test :refer :all]
-            [sicp.ch4 :refer :all]))
+            [sicp.ch4 :refer :all]
+            [backtick :refer :all]))
 
 (deftest test-pristine-eval
   (let [eval-1 pristine-eval
@@ -155,3 +156,19 @@
               env
               (fn [value fail] (is (= value '(3 20))))
               fail)))
+
+(deftest test-an-integer-between
+  (let [env (make-env pristine-primitives)]
+    (amb-eval (template (begin
+                         (define (require p) (if (not p) (amb)))
+                         ~an-integer-between
+                         (define (a-pythagorean-triple-between low high)
+                           (let ((i (an-integer-between low high)))
+                             (let ((j (an-integer-between i high)))
+                               (let ((k (an-integer-between j high)))
+                                 (require (= (+ (* i i) (* j j)) (* k k)))
+                                 (list i j k)))))
+                         (a-pythagorean-triple-between 1 5)))
+              env
+              (fn [value fail] (is false))
+              #(is true))))

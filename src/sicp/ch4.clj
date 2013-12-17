@@ -3,7 +3,8 @@
 
 ;;; Namespace and dependencies
 
-(ns sicp.ch4)
+(ns sicp.ch4
+  (:use [backtick]))
 
 ;;; a basic evaluator
 
@@ -195,7 +196,11 @@
    '-     -
    '*     *
    '/     /
-   '=     =} )
+   '=     =
+   '<     <
+   '>     >
+   '<=    <=
+   '>=    >=} )
 
 (def pristine-primitives
   (let [m pristine-primitives-map]
@@ -760,4 +765,41 @@
   (let [analyze (make-amb-analyze pristine-amb-analyzors)]
     ((analyze exp) env succeed fail)))
 
+;; clojure version of amb
+;; https://github.com/abeppu/toychest/blob/master/src/toychest/amb.clj
+
+(defn amb-let-helper [bindings body]
+  (if (< 0 (count bindings))
+    (let [[form expression] (take 2 bindings)
+          more-bindings (drop 2 bindings)
+          filtered-recurse (if (= :where (first more-bindings))
+                             `(when ~(second more-bindings)
+                                ~(amb-let-helper (drop 2 more-bindings) body))
+                             (amb-let-helper more-bindings body))
+          res (if  (and (seq? expression)
+                        (= 'amb (first expression)))
+                `(apply concat (for [~form ~(second expression)]
+                                 ~filtered-recurse))
+                `(let [~form ~expression]
+                   ~filtered-recurse))]
+      res)
+    [body]))
+
+(defmacro amb-let [bindings body]
+    "vaguely like let, except
+   -- if the expression bound to a variable is of the form
+      (amb col), this has the semantics that the value of the variable
+      is one of the members of the collection
+   -- following the binding form, we accept a vector of requirements
+      each of which a vector whose first is a set of variables to which
+      it applies, and whose second is an expression depending on those vars
+   -- we return a lazy seq of the values produced by the let for variable
+      assignments which satisfy the requirements"
+  (amb-let-helper bindings body))
+
 ;; Exercise 4.35
+
+(def an-integer-between
+  '(define (an-integer-between low high)
+     (require (< low high))
+     (amb low (an-integer-between (+ low 1) high))))

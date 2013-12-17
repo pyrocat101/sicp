@@ -6,4 +6,4 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/math.numeric-tower "0.0.2"]
                  [org.clojure/clojure-contrib "1.2.0"]
-                 [org.clojure/core.match "0.2.0-rc5"]])
+                 [backtick "0.3.0"]])
