@@ -135,10 +135,7 @@
 
 (defn desugar-define
   [[name & params] & body]
-  (cons 'define
-        (list name
-              (cons 'lambda
-                    (cons params body)))))
+  (template (define ~name (lambda ~params ~@body))))
 
 (defn eval-define
   [exp env eval]
@@ -167,7 +164,7 @@
   ([coll]
      (cond (empty? coll) coll
            (empty? (rest coll)) (first coll)
-           :else (cons 'begin coll))))
+           :else (template (begin ~@coll)))))
 
 (defn cond->if
   ([] false)
@@ -268,7 +265,7 @@
   [bindings & body]
   (let [names  (map first bindings)
         values (map second bindings)]
-    (cons (cons 'lambda (cons names body)) values)))
+    (template ((lambda ~names ~@body) ~@values))))
 
 (defn eval-let
   [exp env eval]
@@ -287,14 +284,9 @@
   (letfn [(iter [names values]
             (if (or (empty? (rest names))
                     (empty? (rest values)))
-              (cons 'let
-                    (cons (list (list (first names)
-                                      (first values)))
-                          body))
-              (cons 'let
-                    (list (list (list (first names)
-                                      (first values)))
-                          (iter (rest names) (rest values))))))]
+              (template (let ((~(first names) ~(first values))) ~@body))
+              (template (let ((~(first names) ~(first values)))
+                          ~(iter (rest names) (rest values))))))]
     (iter (map first bindings) (map second bindings))))
 
 (defn eval-let*
@@ -313,16 +305,10 @@
   [& args]
   (if (symbol? (first args))
     (let [[name bindings & body] args]
-      (cons
-       (list
-        (cons 'lambda
-              (cons '()
-                    (list (cons 'define
-                                (cons (cons name
-                                            (map first bindings))
-                                      body))
-                          name))))
-       (map second bindings)))
+      (template (((lambda ()
+                           (define (~name ~@(map first bindings)) ~@body)
+                           ~name))
+                 ~@(map second bindings))))
     (apply let->combination args)))
 
 (defn eval-named-let
@@ -394,15 +380,15 @@
   [bindings & body]
   (let [names  (map first  bindings)
         values (map second bindings)]
-    (cons 'let
-          (cons (map #(list % ''*unassigned*) names)
-                ((fn ! [bindings]
-                   (if (empty? bindings)
-                     body
-                     (let [[[k v] & next] bindings]
-                       (cons (list 'set! k v)
-                             (! next)))))
-                 bindings)))))
+    (template (let ~(map #(list % ''*unassigned*) names)
+                ~@((fn ! [bindings]
+                     (if (empty? bindings)
+                       body
+                       (let [[[k v] & next] bindings]
+                         (template ((set! ~k ~v) ~@(! next)))
+                         #_(cons (list 'set! k v)
+                               (! next)))))
+                   bindings)))))
 
 (defn eval-letrec
   [exp env eval]
