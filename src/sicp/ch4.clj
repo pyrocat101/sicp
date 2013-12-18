@@ -4,7 +4,8 @@
 ;;; Namespace and dependencies
 
 (ns sicp.ch4
-  (:use [backtick]))
+  (:require [backtick :refer :all]
+            [clojure.math.combinatorics :as combo]))
 
 ;;; a basic evaluator
 
@@ -789,3 +790,102 @@
   '(define (an-integer-between low high)
      (require (< low high))
      (amb low (an-integer-between (+ low 1) high))))
+
+;; Exercise 4.36
+
+(def amb-pythagorean-triples
+  (amb-let
+   [k (amb (drop 5 (range)))
+    i (amb (range 2 k))
+    j (amb (range i k))
+    :where (= (+ (* i i) (* j j)) (* k k))]
+   [i j k]))
+
+;; Exercise 4.37
+
+;; Ben is correct, as the search space of `k` is reduced.
+
+;; Exercise 4.38
+
+;; multiple dwelling puzzle:
+
+(def multiple-dwelling
+  (amb-let [baker (amb [1 2 3 4 5])
+            :where (not (= baker 5))
+            cooper (amb [1 2 3 4 5])
+            :where (not (= cooper 1))
+            fletcher (amb [1 2 3 4 5])
+            :where (and (not (= fletcher 5))
+                        (not (= fletcher 1)))
+            miller (amb [1 2 3 4 5])
+            :where (> miller cooper)
+            smith (amb [1 2 3 4 5])
+            :where (and (distinct? baker cooper fletcher miller smith)
+                        (not (= (Math/abs (- smith fletcher)) 1))
+                        (not (= (Math/abs (- fletcher cooper)) 1)))]
+           [:baker baker
+            :cooper cooper
+            :fletcher fletcher
+            :miller miller
+            :smith smith]))
+
+;; modified version
+
+(def multiple-dwelling-1
+  (amb-let [baker (amb [1 2 3 4 5])
+            :where (not (= baker 5))
+            cooper (amb [1 2 3 4 5])
+            :where (not (= cooper 1))
+            fletcher (amb [1 2 3 4 5])
+            :where (and (not (= fletcher 5))
+                        (not (= fletcher 1)))
+            miller (amb [1 2 3 4 5])
+            :where (> miller cooper)
+            smith (amb [1 2 3 4 5])
+            :where (distinct? baker cooper fletcher miller smith)]
+           [:baker baker
+            :cooper cooper
+            :fletcher fletcher
+            :miller miller
+            :smith smith]))
+
+;; Exercise 4.40
+
+(def multiple-dwelling-2
+  (amb-let [baker    (amb [1 2 3 4])
+            cooper   (amb [2 3 4 5])
+            fletcher (amb [2 3 4])
+            miller   (amb [1 2 3 4 5])
+            :where (> miller cooper)
+            smith (amb [1 2 3 4 5])
+            :where (and (distinct? baker cooper fletcher miller smith)
+                        (not (= (Math/abs (- smith fletcher)) 1))
+                        (not (= (Math/abs (- fletcher cooper)) 1)))]
+           [:baker baker
+            :cooper cooper
+            :fletcher fletcher
+            :miller miller
+            :smith smith]))
+
+;; Exercise 4.41
+
+(defn multiple-dwelling-ordinary []
+  (let [permutations (combo/permutations [1 2 3 4 5])]
+    (loop [perm   permutations
+           result ()]
+      (if (empty? perm)
+        result
+        (let [[baker cooper fletcher miller smith] (first perm)]
+          (if (and (not= baker 5)
+                   (not= cooper 1)
+                   (not= fletcher 5)
+                   (not= fletcher 1)
+                   (> miller cooper)
+                   (not (= (Math/abs (- smith fletcher)) 1))
+                   (not (= (Math/abs (- fletcher cooper)) 1)))
+            (recur (rest perm)
+                   (cons (into [] (interleave
+                                   [:baker :cooper :fletcher :miller :smith]
+                                   (first perm)))
+                         result))
+            (recur (rest perm) result)))))))
