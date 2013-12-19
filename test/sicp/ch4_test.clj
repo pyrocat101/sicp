@@ -176,14 +176,30 @@
 
 (deftest test-amb-pythagorean-triples
   (testing "exercise 4.36"
-    (is (= '([3 4 5] [6 8 10] [5 12 13] [9 12 15] [8 15 17])
-           (take 5 amb-pythagorean-triples)))))
+    (is (= (take 5 amb-pythagorean-triples)
+           '([3 4 5] [6 8 10] [5 12 13] [9 12 15] [8 15 17])))))
 
 (deftest test-multiple-dwelling-1
   (testing "exercise 4.38"
-    (is (= 15 (count multiple-dwelling-1)))))
+    (is (= (count multiple-dwelling-1) 15))))
 
 (deftest test-multiple-dwelling-ordinary
   (testing "exercise 4.41"
-    (is (= multiple-dwelling
-           (multiple-dwelling-ordinary)))))
+    (is (= (multiple-dwelling-ordinary)
+           multiple-dwelling))))
+
+(deftest test-liar-puzzle
+  (testing "exercise 4.42"
+    (is (= liar-puzzle
+           '([:betty 3 :ethel 5 :joan 2 :kitty 1 :mary 4])))))
+
+(deftest test-yacht-puzzle
+  (testing "exercise 4.43"
+    (is (= yacht-puzzle
+           '(:downing)))
+    (is (= (count yacht-puzzle-1) 2))))
+
+(deftest test-amb-solve-8-queens
+  (testing "exercise 4.44"
+    (is (= (count (amb-solve-8-queens))
+           92))))

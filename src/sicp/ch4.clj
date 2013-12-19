@@ -889,3 +889,110 @@
                                    (first perm)))
                          result))
             (recur (rest perm) result)))))))
+
+;; Exercise 4.42
+
+(defn xor
+  [a b]
+  (or (and a (not b)) (and b (not a))))
+
+(def liar-puzzle
+  (amb-let [betty (amb [1 2 3 4 5])
+            ethel (amb [1 2 3 4 5])
+            joan  (amb [1 2 3 4 5])
+            kitty (amb [1 2 3 4 5])
+            mary  (amb [1 2 3 4 5])
+            :where (and (distinct? betty ethel joan kitty mary)
+                        (xor (= kitty 2) (= betty 3))
+                        (xor (= ethel 1) (= joan  2))
+                        (xor (= joan  3) (= ethel 5))
+                        (xor (= kitty 2) (= mary  4))
+                        (xor (= mary  4) (= betty 1)))]
+           [:betty betty
+            :ethel ethel
+            :joan  joan
+            :kitty kitty
+            :mary  mary]))
+
+;; Exercise 4.43
+
+;; Table for father => yacht name:
+;; Mr. Moore => Lorna
+;; Colonel Downing => Melissa
+;; Mr. Hall => Rosalind
+;; Sir Barnacle Hood => Gabrielle
+;; Dr. Parker => (must be Mary)
+;;
+;; Other constraints:
+;; Mr. Moore's daughter is Mary
+;; Sir Barnacle's daughter is Melissa
+;; Gabrielle's father owns yacht named after Dr. Parker's daughter
+
+;; (gabrielle
+
+(def yacht-puzzle
+  (amb-let [mary      :moore
+            melissa   :barnacle
+            lorna     (amb [:downing :hall :parker])
+            gabrielle (amb [:downing :hall :parker])
+            rosalind  (amb [:downing :parker])
+            :where (and (distinct? lorna gabrielle rosalind)
+                        ;; Gabrielle's father owns yacht
+                        ;; named after Parker's daughter
+                        (= :parker
+                           (gabrielle {:downing melissa
+                                       :hall    rosalind
+                                       :parker  mary})))]
+           lorna))
+
+;; without Mary Ann's last name
+(def yacht-puzzle-1
+  (->>
+   (amb-let [melissa   :barnacle
+             mary      (amb [:moore :downing :hall])
+             lorna     (amb [:downing :hall :parker])
+             gabrielle (amb [:moore :downing :hall :parker])
+             rosalind  (amb [:moore :downing :parker])
+             :where (and (distinct? mary lorna gabrielle rosalind)
+                         (= :parker
+                            (gabrielle {:moore   lorna
+                                        :downing melissa
+                                        :hall    rosalind
+                                        :parker  mary})))]
+            lorna)
+   (into #{})))
+
+;; Exercise 4.44
+
+(defn queen-safe?
+  [positions]
+  (let [new-col (count positions)
+        new-row (last positions)]
+    (every? identity
+            (for [[col row]
+                  ;; sequence of pair (col, row)
+                  (zipmap (range 1 (count positions))
+                          (drop-last positions))]
+              (and (not= row new-row)
+                   ;; diagonal attack
+                   (not= (- new-col col)
+                         (Math/abs (- new-row row))))))))
+
+;; ugly one
+(defn amb-solve-8-queens []
+  (amb-let [q1 (amb (range 1 9))
+            q2 (amb (range 1 9))
+            :where (queen-safe? [q1 q2])
+            q3 (amb (range 1 9))
+            :where (queen-safe? [q1 q2 q3])
+            q4 (amb (range 1 9))
+            :where (queen-safe? [q1 q2 q3 q4])
+            q5 (amb (range 1 9))
+            :where (queen-safe? [q1 q2 q3 q4 q5])
+            q6 (amb (range 1 9))
+            :where (queen-safe? [q1 q2 q3 q4 q5 q6])
+            q7 (amb (range 1 9))
+            :where (queen-safe? [q1 q2 q3 q4 q5 q6 q7])
+            q8 (amb (range 1 9))
+            :where (queen-safe? [q1 q2 q3 q4 q5 q6 q7 q8])]
+           [q1 q2 q3 q4 q5 q6 q7 q8]))
