@@ -141,38 +141,38 @@
 
 (deftest test-amb-eval
   (let [env  (make-env pristine-primitives)
-        fail (fn [value] (is (= 1 0)))]
-    (amb-eval '(begin
-                (define (require p) (if (not p) (amb)))
-                (define (an-element-of items)
-                  (require (not (null? items)))
-                  (amb (car items) (an-element-of (cdr items))))
-                (define (sum-pair list1 list2 sum)
-                  (let ((a (an-element-of list1))
-                        (b (an-element-of list2)))
-                    (require (= sum (+ a b)))
-                    (list a b)))
-                (sum-pair '(1 3 5 8) '(20 35 110) 23))
-              env
-              (fn [value fail] (is (= value '(3 20))))
-              fail)))
+        fail #(is (= 1 0))]
+    (amb-eval
+     (template
+      (begin
+       ~@amb-utils
+       (define (prime-sum-pair list1 list2)
+         (let ((a (an-element-of list1))
+               (b (an-element-of list2)))
+           (require (prime? (+ a b)))
+           (list a b)))
+       (prime-sum-pair '(1 3 5 8) '(20 35 110))))
+     env
+     (fn [value fail] (is (= value '(3 20))))
+     fail)))
 
 (deftest test-an-integer-between
   (let [env (make-env pristine-primitives)]
-    (amb-eval (template (begin
-                         (define (require p) (if (not p) (amb)))
-                         ~an-integer-between
-                         (define (a-pythagorean-triple-between low high)
-                           (let ((i (an-integer-between low high)))
-                             (let ((j (an-integer-between i high)))
-                               (let ((k (an-integer-between j high)))
-                                 (require (= (+ (* i i) (* j j)) (* k k)))
-
-                                 (list i j k)))))
-                         (a-pythagorean-triple-between 1 5)))
-              env
-              (fn [value fail] (is false))
-              #(is true))))
+    (amb-eval
+     (template
+      (begin
+       ~@amb-utils
+       ~an-integer-between
+       (define (a-pythagorean-triple-between low high)
+         (let ((i (an-integer-between low high)))
+           (let ((j (an-integer-between i high)))
+             (let ((k (an-integer-between j high)))
+               (require (= (+ (* i i) (* j j)) (* k k)))
+               (list i j k)))))
+       (a-pythagorean-triple-between 1 5)))
+     env
+     (fn [value fail] (is false))
+     #(is true))))
 
 (deftest test-amb-pythagorean-triples
   (testing "exercise 4.36"
@@ -203,3 +203,92 @@
   (testing "exercise 4.44"
     (is (= (count (amb-solve-8-queens))
            92))))
+
+(deftest test-amb-permanent-set!
+  (testing "exercise 4.51"
+    (let [env  (make-env pristine-primitives)
+          fail #(is (= 1 0))]
+      (permanent-set-amb-eval
+       (template
+        (begin
+         ~@amb-utils
+         (define count 0)
+         (let ((x (an-element-of '(a b c)))
+               (y (an-element-of '(a b c))))
+           (permanent-set! count (+ count 1))
+           (require (not (= x y)))
+           (list x y count))))
+       env
+       (fn [value fail] (is (= value '(a b 2))))
+       fail))))
+
+(deftest test-if-fail-amb-eval
+  (testing "exercise 4.52"
+    (let [env  (make-env pristine-primitives)
+          fail #(is (= 1 0))]
+      (if-fail-amb-eval
+       (template
+        (begin
+         ~@amb-utils
+         (if-fail (let ((x (an-element-of '(1 3 5))))
+                    (require (even? x))
+                    x)
+                  'all-odd)))
+       env
+       (fn [value fail] (is (= value 'all-odd)))
+       fail)
+      (if-fail-amb-eval
+       (template
+        (begin
+         ~@amb-utils
+         (if-fail (let ((x (an-element-of '(1 3 5 8))))
+                    (require (even? x))
+                    x)
+                  'all-odd)))
+       env
+       (fn [value fail] (is (= value 8)))
+       fail))))
+
+(deftest test-amb-eval-for-4-53
+  (testing "exercise 4.53"
+    (let [env  (make-env pristine-primitives)
+          fail #(is (= 1 0))]
+      (amb-eval-for-4-53
+       (template
+        (begin
+         ~@amb-utils
+         (define (prime-sum-pair list1 list2)
+           (let ((a (an-element-of list1))
+                 (b (an-element-of list2)))
+             (require (prime? (+ a b)))
+             (list a b)))
+         (let ((pairs '()))
+           (if-fail (let ((p (prime-sum-pair '(1 3 5 8)
+                                             '(20 35 110))))
+                      (permanent-set! pairs (cons p pairs))
+                      (amb))
+                    pairs))))
+       env
+       (fn [value fail] (is (= value '((8 35)
+                                      (3 110)
+                                      (3 20)))))
+       fail))))
+
+(deftest test-special-require-amb-eval
+  (testing "exercise 4.54"
+    (let [env  (make-env pristine-primitives)
+          fail #(is (= 1 0))]
+      (special-require-amb-eval
+       '(begin
+         (define (an-element-of items)
+           (require (not (null? items)))
+           (amb (car items) (an-element-of (cdr items))))
+         (define (prime-sum-pair list1 list2)
+           (let ((a (an-element-of list1))
+                 (b (an-element-of list2)))
+             (require (prime? (+ a b)))
+             (list a b)))
+         (prime-sum-pair '(1 3 5 8) '(20 35 110)))
+       env
+       (fn [value fail] (is (= value '(3 20))))
+       fail))))

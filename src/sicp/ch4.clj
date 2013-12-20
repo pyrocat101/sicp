@@ -7,6 +7,20 @@
   (:require [backtick :refer :all]
             [clojure.math.combinatorics :as combo]))
 
+;;; Utility function
+
+(declare primes)
+
+(defn prime? [n]
+  "true if n is prime, false otherwise"
+  (let [limit (Math/sqrt (inc n))]
+    (every? #(not= (rem n %) 0)
+            (take-while #(< % limit) primes))))
+
+(def primes
+  (lazy-cat [2 3]
+            (filter prime? (iterate inc 5))))
+
 ;;; a basic evaluator
 
 (defn eval-seq [eval]
@@ -184,21 +198,24 @@
 ;; basic primitives
 
 (def pristine-primitives-map
-  {'car   first
-   'cdr   rest
-   'cons  cons
-   'null? empty?
-   'not   not
-   'list  list
-   '+     +
-   '-     -
-   '*     *
-   '/     /
-   '=     =
-   '<     <
-   '>     >
-   '<=    <=
-   '>=    >=} )
+  {'car    first
+   'cdr    rest
+   'cons   cons
+   'null?  empty?
+   'not    not
+   'list   list
+   'even?  even?
+   'odd?   odd?
+   'prime? prime?
+   '+      +
+   '-      -
+   '*      *
+   '/      /
+   '=      =
+   '<      <
+   '>      >
+   '<=     <=
+   '>=     >=} )
 
 (def pristine-primitives
   (let [m pristine-primitives-map]
@@ -748,9 +765,16 @@
    :let    amb-analyze-let
    :amb    amb-analyze-amb})
 
-(defn amb-eval [exp env succeed fail]
+(defn amb-eval
+  [exp env succeed fail]
   (let [analyze (make-amb-analyze pristine-amb-analyzors)]
     ((analyze exp) env succeed fail)))
+
+(def amb-utils
+  '((define (require p) (if (not p) (amb)))
+    (define (an-element-of items)
+      (require (not (null? items)))
+      (amb (car items) (an-element-of (cdr items))))))
 
 ;; clojure version of amb
 ;; https://github.com/abeppu/toychest/blob/master/src/toychest/amb.clj
@@ -928,8 +952,6 @@
 ;; Sir Barnacle's daughter is Melissa
 ;; Gabrielle's father owns yacht named after Dr. Parker's daughter
 
-;; (gabrielle
-
 (def yacht-puzzle
   (amb-let [mary      :moore
             melissa   :barnacle
@@ -996,3 +1018,118 @@
             q8 (amb (range 1 9))
             :where (queen-safe? [q1 q2 q3 q4 q5 q6 q7 q8])]
            [q1 q2 q3 q4 q5 q6 q7 q8]))
+
+;; Exercise 4.45
+
+;; The sentence:
+;; The professor lectures to the student in the class with the cat
+;;
+;; 1. the student is in the class and the student is with the cat
+;; 2. the student is in the class and the professor is with the cat
+;; 3. the professor is in the class and the professor is with the cat
+;; 4. the student is in the class and the class is with the cat
+;; 5. the professor is in the class and the class is with the cat
+
+;; Exercise 4.46
+
+;; Because if vice versa, the program would first parse the verb phrase
+;; before noun parse.
+
+;; Exercise 4.47
+
+;; It works if the order of expression in the `amb` remain unchanged.
+;; However, the program would run into an infinite loop of calling
+;; `parse-verb-phrase` if we swapped two expressions.
+
+;; Exercise 4.50
+
+(defn amb-analyze-ramb
+  [choices analyze]
+  (amb-analyze-amb (shuffle choices) analyze))
+
+(def ramb-analyzors
+  (assoc pristine-amb-analyzors
+    :ramb amb-analyze-ramb))
+
+(defn ramb-eval
+  [exp env succeed fail]
+  (let [analyze (make-amb-analyze ramb-analyzors)]
+    ((analyze exp) env succeed fail)))
+
+;; Exercise 4.51
+
+(defn amb-analyze-permanent-assign
+  [[v o] analyze]
+  (let [o (analyze o)]
+    (fn [env succeed fail]
+      (o env
+         (fn [val fail]
+           (env-set! env v val)
+           (succeed 'ok fail))
+         fail))))
+
+(def permanent-assign-amb-analyzors
+  (assoc pristine-amb-analyzors
+    :permanent-set! amb-analyze-permanent-assign))
+
+(defn permanent-set-amb-eval
+  [exp env succeed fail]
+  (let [analyze (make-amb-analyze permanent-assign-amb-analyzors)]
+    ((analyze exp) env succeed fail)))
+
+;; Exercise 4.52
+
+(defn amb-analyze-if-fail
+  [[conseq recover] analyze]
+  (let [conseq  (analyze conseq)
+        recover (analyze recover)]
+    (fn [env succeed fail]
+      (conseq env
+              succeed
+              #(recover env succeed fail)))))
+
+(def if-fail-amb-analyzors
+  (assoc pristine-amb-analyzors
+    :if-fail amb-analyze-if-fail))
+
+(defn if-fail-amb-eval
+  [exp env succeed fail]
+  (let [analyze (make-amb-analyze if-fail-amb-analyzors)]
+    ((analyze exp) env succeed fail)))
+
+;; Exercise 4.53
+
+;; The result should be:
+;; '((8 35) (3 110) (3 20))
+
+(def amb-analyzors-for-4-53
+  (assoc pristine-amb-analyzors
+    :permanent-set! amb-analyze-permanent-assign
+    :if-fail amb-analyze-if-fail))
+
+(defn amb-eval-for-4-53
+  [exp env succeed fail]
+  (let [analyze (make-amb-analyze amb-analyzors-for-4-53)]
+    ((analyze exp) env succeed fail)))
+
+;; Exercise 4.54
+
+(defn amb-analyze-require
+  [[pred] analyze]
+  (let [pred (analyze pred)]
+    (fn [env succeed fail]
+      (pred env
+            (fn [pred-value fail2]
+              (if-not pred-value
+                (fail2)
+                (succeed 'ok fail2)))
+            fail))))
+
+(def special-require-amb-analyzors
+  (assoc pristine-amb-analyzors
+    :require amb-analyze-require))
+
+(defn special-require-amb-eval
+  [exp env succeed fail]
+  (let [analyze (make-amb-analyze special-require-amb-analyzors)]
+    ((analyze exp) env succeed fail)))
