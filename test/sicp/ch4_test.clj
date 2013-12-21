@@ -292,3 +292,12 @@
        env
        (fn [value fail] (is (= value '(3 20))))
        fail))))
+
+(deftest test-simple-queries
+  (testing "exercise 4.55"
+    (is (= #{[:Fect :Cy :D] [:Hacker :Alyssa :P] [:Tweakit :Lem :E]}
+           (into #{} supervised-by-ben-bitdiddle)))
+    (is (= #{[:Scrooge :Eben] [:Cratchet :Robert]}
+           (into #{} people-in-accounting-division)))
+    (is (= #{[:Bitdiddle :Ben] [:Reasoner :Louis] [:Aull :DeWitt]}
+           (into #{} people-in-slumerville))))

@@ -4,8 +4,11 @@
 ;;; Namespace and dependencies
 
 (ns sicp.ch4
-  (:require [backtick :refer :all]
-            [clojure.math.combinatorics :as combo]))
+  (:refer-clojure :exclude [==])
+  (:require [clojure.math.combinatorics :as combo])
+  (:use [backtick :only [template]]
+        [clojure.core.logic]
+        [clojure.core.logic.pldb :rename {db-rel defrel}]))
 
 ;;; Utility function
 
@@ -324,8 +327,8 @@
   (if (symbol? (first args))
     (let [[name bindings & body] args]
       (template (((lambda ()
-                           (define (~name ~@(map first bindings)) ~@body)
-                           ~name))
+                          (define (~name ~@(map first bindings)) ~@body)
+                          ~name))
                  ~@(map second bindings))))
     (apply let->combination args)))
 
@@ -405,7 +408,7 @@
                        (let [[[k v] & next] bindings]
                          (template ((set! ~k ~v) ~@(! next)))
                          #_(cons (list 'set! k v)
-                               (! next)))))
+                                 (! next)))))
                    bindings)))))
 
 (defn eval-letrec
@@ -797,7 +800,7 @@
     [body]))
 
 (defmacro amb-let [bindings body]
-    "vaguely like let, except
+  "vaguely like let, except
    -- if the expression bound to a variable is of the form
       (amb col), this has the semantics that the value of the variable
       is one of the members of the collection
@@ -1133,3 +1136,91 @@
   [exp env succeed fail]
   (let [analyze (make-amb-analyze special-require-amb-analyzors)]
     ((analyze exp) env succeed fail)))
+
+;; Sample data base as is in 4.4.1
+
+(defrel address p a)
+(defrel job p j)
+(defrel salary p s)
+(defrel salary p s)
+(defrel supervisor p s)
+(defrel can-do-job p j)
+
+(def facts
+  (db
+   [address [:Bitdiddle :Ben] [:Slumerville [:Ridge :Road] 10]]
+   [job     [:Bitdiddle :Ben] [:computer :wizard]]
+   [salary  [:Bitdiddle :Ben] 60000]
+   [supervisor [:Bitdiddle :Ben] [:Warbucks :Oliver]]
+
+   [address    [:Hacker :Alyssa :P] [:Cambridge [:Mass :Ave] 78]]
+   [job        [:Hacker :Alyssa :P] [:computer :programmer]]
+   [salary     [:Hacker :Alyssa :P] 40000]
+   [supervisor [:Hacker :Alyssa :P] [:Bitdiddle :Ben]]
+
+   [address    [:Fect :Cy :D] [:Cambridge [:Ames :Street] 3]]
+   [job        [:Fect :Cy :D] [:computer :programmer]]
+   [salary     [:Fect :Cy :D] 35000]
+   [supervisor [:Fect :Cy :D] [:Bitdiddle :Ben]]
+
+   [address    [:Tweakit :Lem :E] [:Boston [:Bay :State :Road] 22]]
+   [job        [:Tweakit :Lem :E] [:computer :technician]]
+   [salary     [:Tweakit :Lem :E] 25000]
+   [supervisor [:Tweakit :Lem :E] [:Bitdiddle :Ben]]
+
+   [address    [:Reasoner :Louis] [:Slumerville [:Pine :Tree :Road] 80]]
+   [job        [:Reasoner :Louis] [:computer :programmer :trainee]]
+   [salary     [:Reasoner :Louis] 30000]
+   [supervisor [:Reasoner :Louis] [:Hacker :Alyssa :P]]
+
+   [address    [:Warbucks :Oliver] [:Swellesley [:Top :Heap :Road]]]
+   [job        [:Warbucks :Oliver] [:administration :big :wheel]]
+   [salary     [:Warbucks :Oliver] 150000]
+
+   [address    [:Scrooge :Eben] [:Weston [:Shady :Lane] 10]]
+   [job        [:Scrooge :Eben] [:accounting :chief :accountant]]
+   [salary     [:Scrooge :Eben] 75000]
+   [supervisor [:Scrooge :Eben] [:Warbucks :Oliver]]
+
+   [address    [:Cratchet :Robert] [:Allston [:N :Harvard :Street] 16]]
+   [job        [:Cratchet :Robert] [:accounting :scrivener]]
+   [salary     [:Cratchet :Robert] 18000]
+   [supervisor [:Cratchet :Robert] [:Scrooge :Eben]]
+
+   [address    [:Aull :DeWitt] [:Slumerville [:Onion :Square] 5]]
+   [job        [:Aull :DeWitt] [:administration :secretary]]
+   [salary     [:Aull :DeWitt] 25000]
+   [supervisor [:Aull :DeWitt] [:Warbucks :Oliver]]
+
+   [can-do-job [:computer :wizard] [:computer :programmer]]
+   [can-do-job [:computer :wizard] [:computer :technician]]
+   [can-do-job [:computer :programmer] [:computer :programmer :trainee]]
+   [can-do-job [:administration :secretary] [:administration :big :wheel]]))
+
+;; Exercise 4.55
+
+(def supervised-by-ben-bitdiddle
+  "all people supervised by Ben Bitdiddle"
+  (with-db facts
+    (doall
+     (run* [q] (supervisor q [:Bitdiddle :Ben])))))
+
+(def people-in-accounting-division
+  "the names and jobs of all people in the accounting division"
+  (with-db facts
+    (doall
+     (run* [q]
+           (fresh [?name ?job]
+                  (job ?name ?job)
+                  (firsto ?job :accounting)
+                  (== q [?name ?job]))))))
+
+(def people-in-slumerville
+  "the names and addresses of all people who live in Slumerville"
+  (with-db facts
+    (doall
+     (run* [q]
+           (fresh [?name ?address]
+                  (address ?name ?address)
+                  (firsto ?address :Slumerville)
+                  (== q [?name ?address]))))))
