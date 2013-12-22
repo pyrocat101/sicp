@@ -295,9 +295,39 @@
 
 (deftest test-simple-queries
   (testing "exercise 4.55"
-    (is (= #{[:Fect :Cy :D] [:Hacker :Alyssa :P] [:Tweakit :Lem :E]}
-           (into #{} supervised-by-ben-bitdiddle)))
-    (is (= #{[:Scrooge :Eben] [:Cratchet :Robert]}
-           (into #{} people-in-accounting-division)))
-    (is (= #{[:Bitdiddle :Ben] [:Reasoner :Louis] [:Aull :DeWitt]}
-           (into #{} people-in-slumerville))))
+    (is (= (into #{} supervised-by-ben-bitdiddle)
+           #{[:Fect :Cy :D] [:Hacker :Alyssa :P] [:Tweakit :Lem :E]}))
+    (is (= (into #{} people-in-accounting-division)
+           #{[[:Cratchet :Robert] [:accounting :scrivener]]
+             [[:Scrooge :Eben] [:accounting :chief :accountant]]}))
+    (is (= (into #{} people-in-slumerville)
+           #{[[:Reasoner :Louis] [:Slumerville [:Pine :Tree :Road] 80]]
+             [[:Bitdiddle :Ben] [:Slumerville [:Ridge :Road] 10]]
+             [[:Aull :DeWitt] [:Slumerville [:Onion :Square] 5]]}))))
+
+(deftest test-compound-queries
+  (testing "exercise 4.56"
+    (is (= (into #{} supervised-by-ben-bitdiddle-with-address)
+           #{[[:Fect :Cy :D] [:Cambridge [:Ames :Street] 3]]
+             [[:Hacker :Alyssa :P] [:Cambridge [:Mass :Ave] 78]]
+             [[:Tweakit :Lem :E] [:Boston [:Bay :State :Road] 22]]}))
+    (is (= (into #{} salary-less-than-ben-bitdiddle-s)
+           #{[[:Tweakit :Lem :E] 25000 60000]
+             [[:Cratchet :Robert] 18000 60000]
+             [[:Fect :Cy :D] 35000 60000]
+             [[:Reasoner :Louis] 30000 60000]
+             [[:Aull :DeWitt] 25000 60000]
+             [[:Hacker :Alyssa :P] 40000 60000]}))
+    (is (= (into #{} supervised-not-in-computer-division)
+           #{[[:Scrooge :Eben]
+              [:Warbucks :Oliver]
+              [:administration :big :wheel]]
+             [[:Aull :DeWitt]
+              [:Warbucks :Oliver]
+              [:administration :big :wheel]]
+             [[:Bitdiddle :Ben]
+              [:Warbucks :Oliver]
+              [:administration :big :wheel]]
+             [[:Cratchet :Robert]
+              [:Scrooge :Eben]
+              [:accounting :chief :accountant]]}))))

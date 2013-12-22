@@ -5,7 +5,8 @@
 
 (ns sicp.ch4
   (:refer-clojure :exclude [==])
-  (:require [clojure.math.combinatorics :as combo])
+  (:require [clojure.math.combinatorics :as combo]
+            [clojure.core.logic.fd :as fd])
   (:use [backtick :only [template]]
         [clojure.core.logic]
         [clojure.core.logic.pldb :rename {db-rel defrel}]))
@@ -1224,3 +1225,40 @@
                   (address ?name ?address)
                   (firsto ?address :Slumerville)
                   (== q [?name ?address]))))))
+
+;; Exercise 4.56
+
+(def supervised-by-ben-bitdiddle-with-address
+  "the names of all people who are supervised by Ben Bitdiddle,
+   together with their addresses"
+  (with-db facts
+    (doall
+     (run* [q]
+           (fresh [?name ?address]
+                  (supervisor ?name [:Bitdiddle :Ben])
+                  (address ?name ?address)
+                  (== q [?name ?address]))))))
+
+(def salary-less-than-ben-bitdiddle-s
+  "all people whose salary is less than Ben Bitdiddle's,
+   together with their salary and Ben Bitdiddle's salary"
+  (with-db facts
+    (doall
+     (run* [q]
+           (fresh [?name ?salary ?ben-salary]
+                  (salary [:Bitdiddle :Ben] ?ben-salary)
+                  (salary ?name ?salary)
+                  (fd/< ?salary ?ben-salary)
+                  (== q [?name ?salary ?ben-salary]))))))
+
+(def supervised-not-in-computer-division
+  "all people who are supervised by someone who is not in the
+   computer division, together with the supervisor's name and job"
+  (with-db facts
+    (doall
+     (run* [q]
+           (fresh [?name ?supervisor ?supervisor-job]
+                  (supervisor ?name ?supervisor)
+                  (job ?supervisor ?supervisor-job)
+                  (nafc firsto ?supervisor-job :computer)
+                  (== q [?name ?supervisor ?supervisor-job]))))))
