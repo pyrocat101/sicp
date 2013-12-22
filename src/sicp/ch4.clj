@@ -1202,63 +1202,53 @@
 
 (def supervised-by-ben-bitdiddle
   "all people supervised by Ben Bitdiddle"
-  (with-db facts
-    (doall
-     (run* [q] (supervisor q [:Bitdiddle :Ben])))))
+  (run-db* facts [q] (supervisor q [:Bitdiddle :Ben])))
 
 (def people-in-accounting-division
   "the names and jobs of all people in the accounting division"
-  (with-db facts
-    (doall
-     (run* [q]
+  (run-db* facts [q]
            (fresh [?name ?job]
                   (job ?name ?job)
                   (firsto ?job :accounting)
-                  (== q [?name ?job]))))))
+                  (== q [?name ?job]))))
 
 (def people-in-slumerville
   "the names and addresses of all people who live in Slumerville"
-  (with-db facts
-    (doall
-     (run* [q]
+  (run-db* facts [q]
            (fresh [?name ?address]
                   (address ?name ?address)
                   (firsto ?address :Slumerville)
-                  (== q [?name ?address]))))))
+                  (== q [?name ?address]))))
 
 ;; Exercise 4.56
 
 (def supervised-by-ben-bitdiddle-with-address
   "the names of all people who are supervised by Ben Bitdiddle,
    together with their addresses"
-  (with-db facts
-    (doall
-     (run* [q]
+  (run-db* facts [q]
            (fresh [?name ?address]
                   (supervisor ?name [:Bitdiddle :Ben])
                   (address ?name ?address)
-                  (== q [?name ?address]))))))
+                  (== q [?name ?address]))))
 
 (def salary-less-than-ben-bitdiddle-s
   "all people whose salary is less than Ben Bitdiddle's,
    together with their salary and Ben Bitdiddle's salary"
-  (with-db facts
-    (doall
-     (run* [q]
+  (run-db* facts [q]
            (fresh [?name ?salary ?ben-salary]
                   (salary [:Bitdiddle :Ben] ?ben-salary)
                   (salary ?name ?salary)
                   (fd/< ?salary ?ben-salary)
-                  (== q [?name ?salary ?ben-salary]))))))
+                  (== q [?name ?salary ?ben-salary]))))
 
 (def supervised-not-in-computer-division
   "all people who are supervised by someone who is not in the
    computer division, together with the supervisor's name and job"
-  (with-db facts
-    (doall
-     (run* [q]
+  (run-db* facts [q]
            (fresh [?name ?supervisor ?supervisor-job]
                   (supervisor ?name ?supervisor)
                   (job ?supervisor ?supervisor-job)
                   (nafc firsto ?supervisor-job :computer)
-                  (== q [?name ?supervisor ?supervisor-job]))))))
+                  (== q [?name ?supervisor ?supervisor-job]))))
+
+;; Exercise 4.57
