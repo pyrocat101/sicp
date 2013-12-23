@@ -373,3 +373,45 @@
              [[:Bitdiddle :Ben] [:Reasoner :Louis]]
              [[:Aull :DeWitt] [:Reasoner :Louis]]
              [[:Aull :DeWitt] [:Bitdiddle :Ben]]}))))
+
+(deftest test-next-to
+  (testing "exercise 4.61"
+    (is (= (into #{}
+                 (run* [q]
+                       (fresh [x y]
+                              (next-to x y [1 [2 3] 4])
+                              (== q [x y]))))
+           #{[1 [2 3]] [[2 3] 4]}))
+    (is (= (into #{}
+                 (run* [q]
+                       (next-to q 1 [2 1 3 1])))
+           #{2 3}))))
+
+(deftest test-last-pair
+  (testing "exercise 4.62"
+    (is (= (->> (run* [q] (last-pair [3] q))
+                (map #(into [] %))
+                (into #{}))
+           #{[3]}))
+    (is (= (->> (run* [q] (last-pair [1 2 3] q))
+                (map #(into [] %))
+                (into #{}))
+           #{[3]}))
+    (is (= (->> (run* [q] (last-pair [2 q] [3]))
+                (into #{}))
+           #{3}))))
+
+(deftest test-generations-of-adam
+  (testing "exercise 4.63"
+    (is (= (into #{}
+                 (run-db* generations-of-adam [q]
+                          (grandson-of :Cain q)))
+           #{:Irad}))
+    (is (= (into #{}
+                 (run-db* generations-of-adam [q]
+                          (son-of :Lamech q)))
+           #{:Jubal :Jabal}))
+    (is (= (into #{}
+                 (run-db* generations-of-adam [q]
+                          (grandson-of :Methushael q)))
+           #{:Jubal :Jabal}))))

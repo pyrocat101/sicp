@@ -1355,8 +1355,42 @@
 ;; ==> ((2 1) (3 1))
 
 (defne next-to
-  "A relation that finds adjacent elements of a list."
+  "A relation where l is a collection, such that x and y are adjacent."
   [x y l]
   ([_ _ [x y . tail]])
   ([_ _ [v . tail]]
      (next-to x y tail)))
+
+;; Exercise 4.62
+
+(defne last-pair
+  "A relation where l is a list, such that x is the last pair in it."
+  [l x]
+  ([[_ . ()] l])
+  ([[_ . tail] _]
+     (last-pair tail x)))
+
+;; Exercise 4.63
+
+(defrel son x y)
+(defrel wife x y)
+
+(def generations-of-adam
+  (db
+   [son :Adam :Cain]
+   [son :Cain :Enoch]
+   [son :Enoch :Irad]
+   [son :Mehujael :Methushael]
+   [son :Methushael :Lamech]
+   [wife :Lamech :Ada]
+   [son :Ada :Jabal]
+   [son :Ada :Jubal]))
+
+(defne son-of
+  [x y]
+  ([_ _] (fresh [w] (wife x w) (son w y)))
+  ([_ _] (son x y)))
+
+(defne grandson-of
+  [x y]
+  ([_ _] (fresh [z] (son x z) (son-of z y))))
