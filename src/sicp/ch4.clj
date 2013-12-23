@@ -1295,12 +1295,6 @@
                 (job ?sv ?job2)
                 (nafc firsto ?job2 ?div))))
 
-(def who-is-big-shot
-  (run-db* facts [q]
-           (fresh [a b]
-                  (big-shot a b)
-                  (== q [a b]))))
-
 
 ;; Exercise 4.59
 
@@ -1353,8 +1347,16 @@
                 (project [?p1 ?p2]
                          (== true (neg? (compare ?p1 ?p2)))))))
 
-(def microshaft-neighborhood
-  (run-db* facts [q]
-           (fresh [a b]
-                  (lives-near a b)
-                  (== q [a b]))))
+;; Exercise 4.61
+
+;; (?x next-to ?y in (1 (2 3) 4))
+;; ==> (1 (2 3)) ((2 3) 4)
+;; (?x next-to 1 in (2 1 3 1))
+;; ==> ((2 1) (3 1))
+
+(defne next-to
+  "A relation that finds adjacent elements of a list."
+  [x y l]
+  ([_ _ [x y . tail]])
+  ([_ _ [v . tail]]
+     (next-to x y tail)))

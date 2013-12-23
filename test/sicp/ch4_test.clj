@@ -1,7 +1,10 @@
 (ns sicp.ch4_test
-  (:require [clojure.test :refer :all]
-            [sicp.ch4 :refer :all]
-            [backtick :refer :all]))
+  (:refer-clojure :exclude [==])
+  (:use [clojure.test]
+        [clojure.core.logic :exclude [is record?]]
+        [clojure.core.logic.pldb]
+        [sicp.ch4]
+        [backtick]))
 
 (deftest test-pristine-eval
   (let [eval-1 pristine-eval
@@ -343,22 +346,30 @@
 
 (deftest test-big-shot
   (testing "exercise 4.58"
-    (is (= (into #{} who-is-big-shot)
+    (is (= (into #{}
+                 (run-db* facts [q]
+                          (fresh [a b]
+                                 (big-shot a b)
+                                 (== q [a b]))))
            #{[[:Bitdiddle :Ben] :computer]
              [[:Scrooge :Eben] :accounting]}))))
 
 (deftest test-meetings
   (testing "exercise 4.59"
-    (is (= ((into #{} meetings-at-friday)
-            #{[:administration [:Friday :1pm]]})))
-    (is (= ((into #{} alyssa-meetings-at-wednesday)
-            #{[:whole-company [:Wednesday :4pm]]
-              [:computer [:Wednesday :3pm]]})))))
+    (is (= (into #{} meetings-at-friday)
+           #{[:administration [:Friday :1pm]]}))
+    (is (= (into #{} alyssa-meetings-at-wednesday)
+           #{[:whole-company [:Wednesday :4pm]]
+             [:computer [:Wednesday :3pm]]}))))
 
 (deftest test-asymmetric-lives-near
   (testing "exercise 4.60"
-    (is (= ((into #{} microshaft-neighborhood)
-            #{[[:Fect :Cy :D] [:Hacker :Alyssa :P]]
-              [[:Bitdiddle :Ben] [:Reasoner :Louis]]
-              [[:Aull :DeWitt] [:Reasoner :Louis]]
-              [[:Aull :DeWitt] [:Bitdiddle :Ben]]})))))
+    (is (= (into #{} #_microshaft-neighborhood
+                 (run-db* facts [q]
+                          (fresh [a b]
+                                 (asymmetric-lives-near a b)
+                                 (== q [a b]))))
+           #{[[:Fect :Cy :D] [:Hacker :Alyssa :P]]
+             [[:Bitdiddle :Ben] [:Reasoner :Louis]]
+             [[:Aull :DeWitt] [:Reasoner :Louis]]
+             [[:Aull :DeWitt] [:Bitdiddle :Ben]]}))))
