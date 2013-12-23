@@ -1252,3 +1252,109 @@
                   (== q [?name ?supervisor ?supervisor-job]))))
 
 ;; Exercise 4.57
+
+(defne can-replace
+  "A rule that says that person 1 can replace person 2 if
+   either person 1 does the same job as person 2 or someone
+   who does person 1's job can also do person 2's job,
+   and if person 1 and person 2 are not the same person."
+  [?p1 ?p2]
+  ([_ _] (fresh [?job1 ?job2]
+                (job ?p1 ?job1)
+                (job ?p2 ?job2)
+                (nafc == ?p1 ?p2)
+                (conde [(== ?job1 ?job2)]
+                       [(can-do-job ?job1 ?job2)]))))
+
+(def can-replace-cy-d-fect
+  "All people who can replace Cy D. Fect"
+  (run-db* facts [q]
+           (can-replace q [:Fect :Cy :D])))
+
+(def can-replace-who-is-being-paid-more
+  "All people who can replace someone who is being paid more than
+   they are, together with the two salaries."
+  (run-db* facts [q]
+           (fresh [?p1 ?p2 ?s1 ?s2]
+                  (can-replace ?p1 ?p2)
+                  (salary ?p1 ?s1)
+                  (salary ?p2 ?s2)
+                  (fd/< ?s1 ?s2)
+                  (== q [?p1 ?s1 ?s2]))))
+
+;; Exercise 4.58
+
+(defne big-shot
+  "A person is a ``big shot'' in a division if the person works in the
+   division but does not have a supervisor who works in the division."
+  [?p ?div]
+  ([_ _] (fresh [?sv ?job1 ?job2]
+                (job ?p ?job1)
+                (firsto ?job1 ?div)
+                (supervisor ?p ?sv)
+                (job ?sv ?job2)
+                (nafc firsto ?job2 ?div))))
+
+(def who-is-big-shot
+  (run-db* facts [q]
+           (fresh [a b]
+                  (big-shot a b)
+                  (== q [a b]))))
+
+
+;; Exercise 4.59
+
+(defrel meeting d t)
+(def meetings
+  (db
+   [meeting :accounting [:Monday :9am]]
+   [meeting :administration [:Monday :3pm]]
+   [meeting :computer [:Wednesday :3pm]]
+   [meeting :administration [:Friday :1pm]]
+   [meeting :whole-company [:Wednesday :4pm]]))
+
+(def meetings-at-friday
+  (run-db* meetings [q]
+           (fresh [?div ?day-and-time]
+                  (meeting ?div ?day-and-time)
+                  (firsto ?day-and-time :Friday)
+                  (== q [?div ?day-and-time]))))
+
+(defne meeting-time
+  [?person ?day-and-time]
+  ([_ _] (fresh [?job ?div]
+                (conde [(job ?person ?job)
+                        (firsto ?job ?div)
+                        (meeting ?div ?day-and-time)]
+                       [(meeting :whole-company ?day-and-time)]))))
+
+(def alyssa-meetings-at-wednesday
+  (with-dbs [facts meetings]
+    (run* [q]
+          (fresh [?div ?day-and-time]
+                 (meeting ?div ?day-and-time)
+                 (firsto ?day-and-time :Wednesday)
+                 (meeting-time [:Hacker :Alyssa :P] ?day-and-time)
+                 (== q [?div ?day-and-time])))))
+
+;; Exercise 4.60
+
+;; Because the distinction relationship is symmetric. We can fix
+;; this problem by using asymmetric relationship such as `less than`.
+;; Here is the modified rule:
+
+(defne asymmetric-lives-near
+  [?p1 ?p2]
+  ([_ _] (fresh [?a1 ?a2 ?t]
+                (address ?p1 ?a1)
+                (address ?p2 ?a2)
+                (firsto ?a1 ?t)
+                (firsto ?a2 ?t)
+                (project [?p1 ?p2]
+                         (== true (neg? (compare ?p1 ?p2)))))))
+
+(def microshaft-neighborhood
+  (run-db* facts [q]
+           (fresh [a b]
+                  (lives-near a b)
+                  (== q [a b]))))

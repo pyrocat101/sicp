@@ -331,3 +331,34 @@
              [[:Cratchet :Robert]
               [:Scrooge :Eben]
               [:accounting :chief :accountant]]}))))
+
+(deftest test-can-replace-rule
+  (testing "exercise 4.57"
+    (is (= (into #{} can-replace-cy-d-fect)
+           #{[:Bitdiddle :Ben]
+             [:Hacker :Alyssa :P]}))
+    (is (= (into #{} can-replace-who-is-being-paid-more)
+           #{[[:Fect :Cy :D] 35000 40000]
+             [[:Aull :DeWitt] 25000 150000]}))))
+
+(deftest test-big-shot
+  (testing "exercise 4.58"
+    (is (= (into #{} who-is-big-shot)
+           #{[[:Bitdiddle :Ben] :computer]
+             [[:Scrooge :Eben] :accounting]}))))
+
+(deftest test-meetings
+  (testing "exercise 4.59"
+    (is (= ((into #{} meetings-at-friday)
+            #{[:administration [:Friday :1pm]]})))
+    (is (= ((into #{} alyssa-meetings-at-wednesday)
+            #{[:whole-company [:Wednesday :4pm]]
+              [:computer [:Wednesday :3pm]]})))))
+
+(deftest test-asymmetric-lives-near
+  (testing "exercise 4.60"
+    (is (= ((into #{} microshaft-neighborhood)
+            #{[[:Fect :Cy :D] [:Hacker :Alyssa :P]]
+              [[:Bitdiddle :Ben] [:Reasoner :Louis]]
+              [[:Aull :DeWitt] [:Reasoner :Louis]]
+              [[:Aull :DeWitt] [:Bitdiddle :Ben]]})))))
