@@ -1364,7 +1364,7 @@
 ;; Exercise 4.62
 
 (defne last-pair
-  "A relation where l is a list, such that x is the last pair in it."
+  "A relation where l is a seq, such that x is the last pair in it."
   [l x]
   ([[_ . ()] l])
   ([[_ . tail] _]
@@ -1394,3 +1394,69 @@
 (defne grandson-of
   [x y]
   ([_ _] (fresh [z] (son x z) (son-of z y))))
+
+;; Exercise 4.64
+
+;; (rule (outranked-by ?staff-person ?boss)
+;;       (or (supervisor ?staff-person ?boss)
+;;           (and (outranked-by ?middle-manager ?boss)
+;;                (supervisor ?staff-person ?middle-manager))))
+;;
+;; (outranked-by (Bitdiddle Ben) ?who)
+;;
+;; The system finds that `outranked-by` rule is applicable.  To process
+;; this query, it evaluates two clauses of `or` in parallel.  The second
+;; clause is an `and` clause that has two sub-clauses, and the system
+;; will evaluate the first sub-clause, to which the `outranked-by` rule
+;; is also applicable. So the interpreter again evaluates the rule body,
+;; and is now in an infinite loop.
+
+;; Exercise 4.65
+
+;; The following rule declares that a person is a ``wheel'' in an
+;; organization if he supervises someone who is in turn a supervisor:
+;;
+;; (rule (wheel ?person)
+;;       (and (supervisor ?middle-manager ?person)
+;;            (supervisor ?x ?middle-manager)))
+;;
+;; Warbucks Oliver is listed four times because the rule matches 4 times.
+;; That is, Oliver Warbucks is the manager of 4 middle managers:
+;;
+;; Cratchet Robert -> Scrooge Eben -> Oliver Warbucks
+;; Tweakit Lem E -> Bitdiddle Ben -> Oliver Warbucks
+;; Fect Cy D -> Bitdiddle Ben -> Oliver Warbucks
+;; Hacker Alyssa P -> Bitdiddle Ben -> Oliver Warbucks
+
+;; Exercise 4.66
+
+;; Ben would get wrong result from accumulation function due to
+;; duplications we mentioned in exercise 4.65. An easy way to fix this
+;; problem is to filter out duplications by passing the stream through a
+;; `distinct` function.
+
+;; Exercise 4.67
+
+;; We can maintain a history of processed simple queries. Every entry in
+;; the history should contain the query and the logic variables that are
+;; still unbounded.
+;;
+;; When the interpreter is to apply a rule on the query, it should check
+;; if the query has been processed in the history. This is done through
+;; the unification of current query and processed query entry in the
+;; history. If the variables are still unbounded in the resulting frame,
+;; then we have detected a loop.
+
+;; Exercise 4.68
+
+(defne reverseo
+  "A relation where l is a seq, such that x is the reverse order of l."
+  [l x]
+  ([[] []])
+  ([[head . tail] _]
+     (fresh [q]
+            (reverseo tail q)
+            (appendo q [head] x))))
+
+;; `(run* [q] (reverseo '(1 2 3) q))` works as expected,
+;; whereas `(run* [q] (reverseo q '(1 2 3)))` falls into infinite loop.

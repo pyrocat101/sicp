@@ -415,3 +415,9 @@
                  (run-db* generations-of-adam [q]
                           (grandson-of :Methushael q)))
            #{:Jubal :Jabal}))))
+
+(deftest test-unidirectional-reverseo
+  (testing "exercise 4.68"
+    (is (= (run* [q] (reverseo [] q)) '([])))
+    (is (= (run* [q] (reverseo [42] q)) '((42))))
+    (is (= (run* [q] (reverseo [1 2 3] q)) '((3 2 1))))))
