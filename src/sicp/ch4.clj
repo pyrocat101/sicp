@@ -7,7 +7,7 @@
   (:refer-clojure :exclude [==])
   (:require [clojure.math.combinatorics :as combo]
             [clojure.core.logic.fd :as fd])
-  (:use [sicp.test_helper :only [template]]
+  (:use [sicp.test_helper :only [quasiquote]]
         [clojure.core.logic]
         [clojure.core.logic.pldb :rename {db-rel defrel}]))
 
@@ -154,7 +154,7 @@
 
 (defn desugar-define
   [[name & params] & body]
-  (template (define ~name (lambda ~params ~@body))))
+  (quasiquote (define ~name (lambda ~params ~@body))))
 
 (defn eval-define
   [exp env eval]
@@ -183,7 +183,7 @@
   ([coll]
      (cond (empty? coll) coll
            (empty? (rest coll)) (first coll)
-           :else (template (begin ~@coll)))))
+           :else (quasiquote (begin ~@coll)))))
 
 (defn cond->if
   ([] false)
@@ -287,7 +287,7 @@
   [bindings & body]
   (let [names  (map first bindings)
         values (map second bindings)]
-    (template ((lambda ~names ~@body) ~@values))))
+    (quasiquote ((lambda ~names ~@body) ~@values))))
 
 (defn eval-let
   [exp env eval]
@@ -306,9 +306,9 @@
   (letfn [(iter [names values]
             (if (or (empty? (rest names))
                     (empty? (rest values)))
-              (template (let ((~(first names) ~(first values))) ~@body))
-              (template (let ((~(first names) ~(first values)))
-                          ~(iter (rest names) (rest values))))))]
+              (quasiquote (let ((~(first names) ~(first values))) ~@body))
+              (quasiquote (let ((~(first names) ~(first values)))
+                            ~(iter (rest names) (rest values))))))]
     (iter (map first bindings) (map second bindings))))
 
 (defn eval-let*
@@ -327,10 +327,10 @@
   [& args]
   (if (symbol? (first args))
     (let [[name bindings & body] args]
-      (template (((lambda ()
-                          (define (~name ~@(map first bindings)) ~@body)
-                          ~name))
-                 ~@(map second bindings))))
+      (quasiquote (((lambda ()
+                            (define (~name ~@(map first bindings)) ~@body)
+                            ~name))
+                   ~@(map second bindings))))
     (apply let->combination args)))
 
 (defn eval-named-let
@@ -402,15 +402,15 @@
   [bindings & body]
   (let [names  (map first  bindings)
         values (map second bindings)]
-    (template (let ~(map #(list % ''*unassigned*) names)
-                ~@((fn ! [bindings]
-                     (if (empty? bindings)
-                       body
-                       (let [[[k v] & next] bindings]
-                         (template ((set! ~k ~v) ~@(! next)))
-                         #_(cons (list 'set! k v)
-                                 (! next)))))
-                   bindings)))))
+    (quasiquote (let ~(map #(list % ''*unassigned*) names)
+                  ~@((fn ! [bindings]
+                       (if (empty? bindings)
+                         body
+                         (let [[[k v] & next] bindings]
+                           (quasiquote ((set! ~k ~v) ~@(! next)))
+                           #_(cons (list 'set! k v)
+                                   (! next)))))
+                     bindings)))))
 
 (defn eval-letrec
   [exp env eval]

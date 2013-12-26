@@ -1,10 +1,10 @@
 (ns sicp.ch4_test
   (:refer-clojure :exclude [==])
   (:use [clojure.test]
-        [clojure.core.logic :exclude [is record?]]
+        [sicp.test_helper :only [quasiquote]]
+        [clojure.core.logic :exclude [is]]
         [clojure.core.logic.pldb]
-        [sicp.ch4]
-        [backtick]))
+        [sicp.ch4]))
 
 (deftest test-pristine-eval
   (let [eval-1 pristine-eval
@@ -146,7 +146,7 @@
   (let [env  (make-env pristine-primitives)
         fail #(is (= 1 0))]
     (amb-eval
-     (template
+     (quasiquote
       (begin
        ~@amb-utils
        (define (prime-sum-pair list1 list2)
@@ -162,7 +162,7 @@
 (deftest test-an-integer-between
   (let [env (make-env pristine-primitives)]
     (amb-eval
-     (template
+     (quasiquote
       (begin
        ~@amb-utils
        ~an-integer-between
@@ -212,7 +212,7 @@
     (let [env  (make-env pristine-primitives)
           fail #(is (= 1 0))]
       (permanent-set-amb-eval
-       (template
+       (quasiquote
         (begin
          ~@amb-utils
          (define count 0)
@@ -230,7 +230,7 @@
     (let [env  (make-env pristine-primitives)
           fail #(is (= 1 0))]
       (if-fail-amb-eval
-       (template
+       (quasiquote
         (begin
          ~@amb-utils
          (if-fail (let ((x (an-element-of '(1 3 5))))
@@ -241,7 +241,7 @@
        (fn [value fail] (is (= value 'all-odd)))
        fail)
       (if-fail-amb-eval
-       (template
+       (quasiquote
         (begin
          ~@amb-utils
          (if-fail (let ((x (an-element-of '(1 3 5 8))))
@@ -257,7 +257,7 @@
     (let [env  (make-env pristine-primitives)
           fail #(is (= 1 0))]
       (amb-eval-for-4-53
-       (template
+       (quasiquote
         (begin
          ~@amb-utils
          (define (prime-sum-pair list1 list2)
@@ -273,8 +273,8 @@
                     pairs))))
        env
        (fn [value fail] (is (= value '((8 35)
-                                      (3 110)
-                                      (3 20)))))
+                                       (3 110)
+                                       (3 20)))))
        fail))))
 
 (deftest test-special-require-amb-eval
