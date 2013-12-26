@@ -7,7 +7,7 @@
   (:refer-clojure :exclude [==])
   (:require [clojure.math.combinatorics :as combo]
             [clojure.core.logic.fd :as fd])
-  (:use [backtick :only [template]]
+  (:use [sicp.test_helper :only [template]]
         [clojure.core.logic]
         [clojure.core.logic.pldb :rename {db-rel defrel}]))
 

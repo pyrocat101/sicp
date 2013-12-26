@@ -7,5 +7,4 @@
                  [org.clojure/math.numeric-tower "0.0.2"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojure/math.combinatorics "0.0.7"]
-                 [org.clojure/core.logic "0.8.5"]
-                 [backtick "0.3.0"]])
+                 [org.clojure/core.logic "0.8.5"]])
