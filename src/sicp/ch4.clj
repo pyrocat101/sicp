@@ -1460,3 +1460,182 @@
 
 ;; `(run* [q] (reverseo '(1 2 3) q))` works as expected,
 ;; whereas `(run* [q] (reverseo q '(1 2 3)))` falls into infinite loop.
+
+;; the implementation of query system
+
+;; TODO: instantiate output stream
+
+(defn instantiate
+  [exp frame unbound-var-handler]
+  (letfn
+      [(copy [exp]
+         (cond (logic-var? exp)
+               ;; look up variable in the frame
+               (if-let [val (get frame exp)]
+                 (recur val)
+                 (unbound-var-handler exp frame))
+               (seq? exp)
+               (cons (copy (first exp)) (copy (rest exp)))
+               :else
+               exp))]
+    (copy exp)))
+
+(def ^:dynamic ^:private *asserts*)
+(def ^:dynamic ^:private *rules*)
+
+(defn make-qeval
+  [special-forms]
+  (letfn
+      [(qeval [[op & args :as query] frames]
+         (if-let [qproc (get special-forms (keyword op))]
+           (qproc args frames)
+           (simple-query query frames)))]
+    (binding [*asserts* (atom {})
+              *rules*   (atom {})]
+      (fn [queries]
+        (let [q (query-syntax-process (first queries))]
+          (if (assert? q)
+            (add-rule-or-assert! q)
+            (do
+              (map #(instantiate q frame (fn [v f] (contract-q-mark v)))
+                   (qeval q ()))
+              (recur (rest queries)))))))))
+
+;; TODO: why delayed append
+(defn simple-query
+  [query-pattern frames]
+  (mapcat #(concat (find-asserts query-pattern %)
+                   (apply-rules query-pattern % qeval))
+          frames))
+
+(defn qeval-conjoin
+  [conjuncts frames qeval]
+  (if (empty? conjuncts)
+    frames
+    (recur (rest conjuncts)
+           (qeval (first conjunts) frames)
+           qeval)))
+
+;; TODO: why delayed interleave
+(defn qeval-disjoin
+  [disjuncts frames qeval]
+  (if (empty? disjuncts)
+    ()
+    (interleave
+     (qeval (first disjuncts) frames)
+     (qeval-disjoin (rest disjuncts) frames qeval))))
+
+(defn qeval-negate
+  [[negated-query & _] frames qeval]
+  (filter #(empty? (qeval negated-query (list %))) frames))
+
+(defn qeval-lisp-value
+  [call frames qeval]
+  (letfn [(exec [[pred & args]]
+            (apply (eval pred) args))
+          (error [v f]
+            (throw (Exception.
+                    (print-str "Unknown pat var -- LISP-VALUE" v))))]
+    (filter #(exec (instantiate call % error)) frames)))
+
+(defn qeval-always-true [_ frames qeval] frames)
+
+(def qeval-basic-special-forms
+  {:and         qeval-conjoin
+   :or          qeval-disjoin
+   :not         qeval-negate
+   :lisp-value  qeval-lisp-value
+   :always-true qeval-always-true})
+
+(defn find-asserts
+  "Returns a stream of frames, each extending the given one by a
+   data-base match of the give pattern."
+  [pattern frame]
+  (mapcat #(check-an-assert % pattern frame)
+          (fetch-asserts pattern frame)))
+
+(defn check-an-assert
+  [assert query-pat query-frame]
+  (let [match-result
+        (pattern-match query-pat assert query-frame)]
+    (if (= match-result :failed)
+      ()
+      (list match-result))))
+
+(defn pattern-match
+  [pat dat frame]
+  (cond
+   (= frame :failed) :failed
+   (= pat dat)       frame
+   (logic-var? pat)  (extend-if-consistent pat dat frame)
+   (and (seq? pat) (seq? dat))
+   ;; handle patterns with dotted tails
+   (cond
+    (= '. (first pat) (first dat))
+    (recur (second pat) (second dat) frame)
+    (= '. (first pat))
+    (recur (second pat) dat frame)
+    (= '. (first dat))
+    (recur pat (second dat) frame)
+    :else
+    (recur
+     (rest pat)
+     (rest dat)
+     (pattern-match (first pat)
+                    (first dat)
+                    frame)))
+   :else :failed))
+
+(defn extend-if-consistent
+  [var dat frame]
+  (if-let [val (get frame var)]
+    (pattern-match val dat frame)
+    (assoc frame var dat)))
+
+(defn apply-rules
+  [pattern frame qeval]
+  (mapcat #(apply-a-rule % pattern frame qeval)
+          (fetch-rules pattern frame)))
+
+(defn apply-a-rule
+  [rule query-pattern query-frame qeval]
+  (let [clean-rule   (rename-variables-in rule)
+        unify-result (unify-match query-pattern
+                                  (rule-conclusion rule)
+                                  query-frame)]
+    (if (= unify-result :failed)
+      ()
+      (qeval (rule-body clean-rule)
+             (list unify-result)))))
+
+(defn rename-variables-in
+  [rule]
+  (letfn
+      [(tree-walk [exp]
+         (cond (logic-var? exp) (gensym "?")
+               (seq? exp) (cons (tree-walk (first exp))
+                                (tree-walk (rest  exp)))
+               :else exp))]
+    (tree-walk rule)))
+
+(defn unify-match
+  [p1 p2 frame]
+  (cond (= frame :failed) :failed
+        (= p1 p2) frame
+        (logic-var? p1) (extend-if-possible p1 p2 frame)
+        (logic-var? p2) (extend-if-possible p2 p1 frame)
+        (and (seq? p1) (seq? p2))
+        (cond
+         (= '. (first p1) (first p2))
+         (recur (second p1) (second p2) frame)
+         (= '. (first p1))
+         (recur (second p1) p2 frame)
+         (= '. (first p2))
+         (recur p1 (second p2) frame)
+         :else
+         (recur (rest p1)
+                (rest p2)
+                (unify-match (first p1)
+                             (first p2)
+                             frame)))
+        :else :failed))
