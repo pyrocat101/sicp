@@ -1,7 +1,7 @@
 (ns sicp.ch4_test
   (:refer-clojure :exclude [==])
   (:use [clojure.test]
-        [sicp.test_helper :only [quasiquote]]
+        [sicp.utils :only [quasiquote]]
         [clojure.core.logic :exclude [is]]
         [clojure.core.logic.pldb]
         [sicp.ch4]))

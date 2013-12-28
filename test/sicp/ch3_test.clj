@@ -3,7 +3,7 @@
              :refer (sqrt sin abs sqr log)]
             [clojure.test :refer :all]
             [sicp.ch3 :refer :all]
-            [sicp.test_helper :refer (≈)]))
+            [sicp.utils :refer (≈)]))
 
 (deftest test-make-accumulator
   (let [acc (make-accumulator 5)]
