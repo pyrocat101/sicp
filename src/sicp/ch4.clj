@@ -1461,106 +1461,209 @@
 ;; `(run* [q] (reverseo '(1 2 3) q))` works as expected,
 ;; whereas `(run* [q] (reverseo q '(1 2 3)))` falls into infinite loop.
 
-;; the implementation of query system
+;;; The Implementation of Query System
 
-;; TODO: instantiate output stream
-
-(defn instantiate
-  [exp frame unbound-var-handler]
-  (letfn
-      [(copy [exp]
-         (cond (logic-var? exp)
-               ;; look up variable in the frame
-               (if-let [val (get frame exp)]
-                 (recur val)
-                 (unbound-var-handler exp frame))
-               (seq? exp)
-               (cons (copy (first exp)) (copy (rest exp)))
-               :else
-               exp))]
-    (copy exp)))
-
-(def ^:dynamic ^:private *asserts*)
+(def ^:dynamic ^:private *assertions*)
 (def ^:dynamic ^:private *rules*)
 
-(defn make-qeval
-  [special-forms]
-  (letfn
-      [(qeval [[op & args :as query] frames]
-         (if-let [qproc (get special-forms (keyword op))]
-           (qproc args frames)
-           (simple-query query frames)))]
-    (binding [*asserts* (atom {})
-              *rules*   (atom {})]
-      (fn [queries]
-        (let [q (query-syntax-process (first queries))]
-          (if (assert? q)
-            (add-rule-or-assert! q)
-            (do
-              (map #(instantiate q frame (fn [v f] (contract-q-mark v)))
-                   (qeval q ()))
-              (recur (rest queries)))))))))
+;; Query Syntax Procedures
 
-;; TODO: why delayed append
-(defn simple-query
-  [query-pattern frames]
-  (mapcat #(concat (find-asserts query-pattern %)
-                   (apply-rules query-pattern % qeval))
-          frames))
+(defn assertion-to-be-added?
+  [exp] (and (seq? exp) (= 'assert! (first exp))))
 
-(defn qeval-conjoin
-  [conjuncts frames qeval]
-  (if (empty? conjuncts)
-    frames
-    (recur (rest conjuncts)
-           (qeval (first conjunts) frames)
-           qeval)))
+(defn assertion-body
+  [[_ body]] body)
 
-;; TODO: why delayed interleave
-(defn qeval-disjoin
-  [disjuncts frames qeval]
-  (if (empty? disjuncts)
-    ()
-    (interleave
-     (qeval (first disjuncts) frames)
-     (qeval-disjoin (rest disjuncts) frames qeval))))
+(defn rule?
+  [statement]
+  (and (seq? statement) (= 'rule (first statement))))
 
-(defn qeval-negate
-  [[negated-query & _] frames qeval]
-  (filter #(empty? (qeval negated-query (list %))) frames))
+(defn rule-conclusion
+  [[_ conclusion body]] conclusion)
 
-(defn qeval-lisp-value
-  [call frames qeval]
-  (letfn [(exec [[pred & args]]
-            (apply (eval pred) args))
-          (error [v f]
-            (throw (Exception.
-                    (print-str "Unknown pat var -- LISP-VALUE" v))))]
-    (filter #(exec (instantiate call % error)) frames)))
+(defn rule-body
+  [[_ conclusion body]] (if body body '(always-true)))
 
-(defn qeval-always-true [_ frames qeval] frames)
+(defn make-logic-var
+  [symbol] (with-meta symbol {:logic-var true}))
 
-(def qeval-basic-special-forms
-  {:and         qeval-conjoin
-   :or          qeval-disjoin
-   :not         qeval-negate
-   :lisp-value  qeval-lisp-value
-   :always-true qeval-always-true})
+(defn map-over-symbols
+  [proc exp]
+  (cond (seq? exp)
+        (if (empty? exp)
+          exp
+          (cons (map-over-symbols proc (first exp))
+                (map-over-symbols proc (rest  exp))))
+        (symbol? exp) (proc exp)
+        :else exp))
 
-(defn find-asserts
-  "Returns a stream of frames, each extending the given one by a
-   data-base match of the give pattern."
+(defn expand-question-mark
+  [symbol]
+  (let [chars (str symbol)]
+    (if (= \? (first chars))
+      (make-logic-var symbol)
+      symbol)))
+
+(defn query-syntax-process
+  [exp] (map-over-symbols expand-question-mark exp))
+
+(defn logic-var?
+  [exp] (and (symbol? exp) (true? (:logic-var (meta exp)))))
+
+(defn constant-symbol?
+  [exp] (and (symbol? exp) (nil? (:logic-var (meta exp)))))
+
+(def contract-question-mark identity)
+
+;; TODO: Stream operations
+
+;; Maintaining the Data Base
+
+(defn indexable?
+  [pat] (symbol? (first pat)))
+
+(defn index-key-of [pat]
+  (let [key (first pat)]
+    (if (logic-var? key) '? key)))
+
+(defn use-index?
+  [pat] (constant-symbol? (first pat)))
+
+(defn store-assertion-in-index
+  [assertion]
+  (if (indexable? assertion)
+    (let [key (index-key-of assertion)
+          current-assertion-stream (get @*assertions* key)]
+      (swap! *assertions* assoc key (cons assertion
+                                          current-assertion-stream)))))
+
+(defn store-rule-in-index
+  [rule]
+  (let [pattern (rule-conclusion rule)]
+    (if (indexable? pattern)
+      (let [key (index-key-of pattern)
+            current-rule-stream (get @*rules* key)]
+        (swap! *rules* assoc key (cons rule
+                                       current-rule-stream))))))
+
+(defn add-assertion!
+  [assertion] (store-assertion-in-index assertion) :ok)
+
+(defn add-rule!
+  [rule] (store-rule-in-index rule) :ok)
+
+(defn get-all-assertions
+  [] (apply concat (vals @*assertions*)))
+
+(defn get-indexed-assertions
+  [pattern] (get @*assertions* (index-key-of pattern)))
+
+(defn fetch-assertions
   [pattern frame]
-  (mapcat #(check-an-assert % pattern frame)
-          (fetch-asserts pattern frame)))
+  (if (use-index? pattern)
+    (get-indexed-assertions pattern)
+    (get-all-assertions)))
 
-(defn check-an-assert
-  [assert query-pat query-frame]
-  (let [match-result
-        (pattern-match query-pat assert query-frame)]
-    (if (= match-result :failed)
+(defn get-all-rules
+  [] (apply concat (vals @*rules*)))
+
+(defn get-indexed-rules
+  [pattern] (concat (get @*rules* (index-key-of pattern))
+                    (get @*rules* '?)))
+
+(defn fetch-rules
+  [pattern frame]
+  (if (use-index? pattern)
+    (get-indexed-rules pattern)
+    (get-all-rules)))
+
+(defn add-rule-or-assertion!
+  [assertion]
+  (if (rule? assertion)
+    (add-rule! assertion)
+    (add-assertion! assertion)))
+
+;; Rules and Unification
+
+(declare extend-if-possible)
+
+(defn unify-match
+  [p1 p2 frame]
+  (cond (= frame :failed) :failed
+        (= p1 p2) frame
+        (logic-var? p1) (extend-if-possible p1 p2 frame)
+        (logic-var? p2) (extend-if-possible p2 p1 frame)
+        (and (seq? p1) (seq? p2))
+        (cond
+         (= '. (first p1) (first p2))
+         (recur (second p1) (second p2) frame)
+         (= '. (first p1))
+         (recur (second p1) p2 frame)
+         (= '. (first p2))
+         (recur p1 (second p2) frame)
+         :else
+         (recur (rest p1)
+                (rest p2)
+                (unify-match (first p1)
+                             (first p2)
+                             frame)))
+        :else :failed))
+
+(defn depends-on?
+  [exp var frame]
+  (letfn [(tree-walk [e]
+            (cond (logic-var? e)
+                  (if (= e var)
+                    true
+                    (if-let [v (get frame e)]
+                      (tree-walk v)
+                      false))
+                  (seq? e)
+                  (or (tree-walk (first e))
+                      (tree-walk (rest  e)))
+                  :else
+                  false))]
+    (tree-walk exp)))
+
+(defn extend-if-possible
+  [left right frame]
+  (let [val (get frame left)]
+    (cond val (unify-match val right frame)
+          (logic-var? right) (if-let [val (get frame right)]
+                               (unify-match left val frame)
+                               (assoc frame left right))
+          (depends-on? right left frame) :failed
+          :else (assoc frame left right))))
+
+(defn rename-variables-in
+  [rule]
+  (letfn
+      [(tree-walk [exp]
+         (cond (logic-var? exp) (make-logic-var (gensym exp))
+               (seq? exp) (cons (tree-walk (first exp))
+                                (tree-walk (rest  exp)))
+               :else exp))]
+    (tree-walk rule)))
+
+(defn apply-a-rule
+  [rule query-pattern query-frame qeval]
+  (let [clean-rule   (rename-variables-in rule)
+        unify-result (unify-match query-pattern
+                                  (rule-conclusion rule)
+                                  query-frame)]
+    (if (= unify-result :failed)
       ()
-      (list match-result))))
+      (qeval (rule-body clean-rule)
+             (list unify-result)))))
+
+(defn apply-rules
+  [pattern frame qeval]
+  (mapcat #(apply-a-rule % pattern frame qeval)
+          (fetch-rules pattern frame)))
+
+;; Finding assertions by Pattern Matching
+
+(declare extend-if-consistent)
 
 (defn pattern-match
   [pat dat frame]
@@ -1592,50 +1695,117 @@
     (pattern-match val dat frame)
     (assoc frame var dat)))
 
-(defn apply-rules
-  [pattern frame qeval]
-  (mapcat #(apply-a-rule % pattern frame qeval)
-          (fetch-rules pattern frame)))
-
-(defn apply-a-rule
-  [rule query-pattern query-frame qeval]
-  (let [clean-rule   (rename-variables-in rule)
-        unify-result (unify-match query-pattern
-                                  (rule-conclusion rule)
-                                  query-frame)]
-    (if (= unify-result :failed)
+(defn check-an-assertion
+  [assertion query-pat query-frame]
+  (let [match-result
+        (pattern-match query-pat assertion query-frame)]
+    (if (= match-result :failed)
       ()
-      (qeval (rule-body clean-rule)
-             (list unify-result)))))
+      (list match-result))))
 
-(defn rename-variables-in
-  [rule]
+(defn find-assertions
+  "Returns a stream of frames, each extending the given one by a
+   data-base match of the give pattern."
+  [pattern frame]
+  (mapcat #(check-an-assertion % pattern frame)
+          (fetch-assertions pattern frame)))
+
+;; simple queries
+
+;; TODO: why delayed append
+(defn simple-query
+  [query-pattern frames qeval]
+  (mapcat #(concat (find-assertions query-pattern %)
+                   (apply-rules query-pattern % qeval))
+          frames))
+
+;; compound queries
+
+(defn qeval-conjoin
+  [conjuncts frames qeval]
+  (if (empty? conjuncts)
+    frames
+    (recur (rest conjuncts)
+           (qeval (first conjuncts) frames)
+           qeval)))
+
+;; TODO: why delayed interleave
+(defn qeval-disjoin
+  [disjuncts frames qeval]
+  (if (empty? disjuncts)
+    ()
+    (interleave
+     (qeval (first disjuncts) frames)
+     (qeval-disjoin (rest disjuncts) frames qeval))))
+
+;; filters
+
+(defn qeval-negate
+  [[negated-query & _] frames qeval]
+  (filter #(empty? (qeval negated-query (list %))) frames))
+
+(declare instantiate)
+
+(defn qeval-lisp-value
+  [call frames qeval]
+  (letfn [(exec [[pred & args]]
+            (apply (eval pred) args))
+          (error [v f]
+            (throw (Exception.
+                    (print-str "Unknown pat var -- LISP-VALUE" v))))]
+    (filter #(exec (instantiate call % error)) frames)))
+
+(defn qeval-always-true [_ frames qeval] frames)
+
+(def qeval-basic-special-forms
+  {:and         qeval-conjoin
+   :or          qeval-disjoin
+   :not         qeval-negate
+   :lisp-value  qeval-lisp-value
+   :always-true qeval-always-true})
+
+;; The Driver Loop and Instantiation
+
+(defn instantiate
+  [exp frame unbound-var-handler]
   (letfn
-      [(tree-walk [exp]
-         (cond (logic-var? exp) (gensym "?")
-               (seq? exp) (cons (tree-walk (first exp))
-                                (tree-walk (rest  exp)))
-               :else exp))]
-    (tree-walk rule)))
+      [(copy [exp]
+         (cond (logic-var? exp)
+               ;; look up variable in the frame
+               (if-let [val (get frame exp)]
+                 (recur val)
+                 (unbound-var-handler exp frame))
+               (seq? exp)
+               (if (empty? exp)
+                 exp
+                 (cons (copy (first exp)) (copy (rest exp))))
+               :else
+               exp))]
+    (copy exp)))
 
-(defn unify-match
-  [p1 p2 frame]
-  (cond (= frame :failed) :failed
-        (= p1 p2) frame
-        (logic-var? p1) (extend-if-possible p1 p2 frame)
-        (logic-var? p2) (extend-if-possible p2 p1 frame)
-        (and (seq? p1) (seq? p2))
-        (cond
-         (= '. (first p1) (first p2))
-         (recur (second p1) (second p2) frame)
-         (= '. (first p1))
-         (recur (second p1) p2 frame)
-         (= '. (first p2))
-         (recur p1 (second p2) frame)
-         :else
-         (recur (rest p1)
-                (rest p2)
-                (unify-match (first p1)
-                             (first p2)
-                             frame)))
-        :else :failed))
+(defn make-qeval
+  [special-forms]
+  (letfn [(qeval [[op & args :as query] frames]
+            (if-let [qproc (get special-forms (keyword op))]
+              (qproc args frames)
+              (simple-query query frames qeval)))
+          (driver-loop [queries result]
+            (if (empty? queries)
+              result
+              (let [q (query-syntax-process (first queries))]
+                (if (assertion-to-be-added? q)
+                  (do
+                    (add-rule-or-assertion! (assertion-body q))
+                    (recur (rest queries) :ok))
+                  (do
+                    (recur (rest queries)
+                           (map #(instantiate q % identity)
+                                (qeval q '({})))))))))]
+    (fn [queries]
+      (binding [*assertions* (atom {})
+                *rules*      (atom {})]
+        (driver-loop queries nil)))))
+
+(def qeval (make-qeval qeval-basic-special-forms))
+
+;; Exercise 4.70
