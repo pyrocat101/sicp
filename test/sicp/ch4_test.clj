@@ -421,3 +421,105 @@
     (is (= (run* [q] (reverseo [] q)) '([])))
     (is (= (run* [q] (reverseo [42] q)) '((42))))
     (is (= (run* [q] (reverseo [1 2 3] q)) '((3 2 1))))))
+
+(deftest test-qeval
+  (is (= (into #{}
+               (qeval
+                (quasiquote
+                 (~@facts-1
+                  (job ?x (computer programmer))))))
+         #{'(job (Hacker Alyssa P) (computer programmer))
+           '(job (Fect Cy D) (computer programmer))}))
+  (is (= (into #{}
+               (qeval
+                (quasiquote
+                 (~@facts-1
+                  (job ?x (computer ?type))))))
+         #{'(job (Bitdiddle Ben) (computer wizard))
+           '(job (Hacker Alyssa P) (computer programmer))
+           '(job (Fect Cy D) (computer programmer))
+           '(job (Tweakit Lem E) (computer technician))}))
+  (is (= (into #{}
+               (qeval
+                (quasiquote
+                 (~@facts-1
+                  (job ?x (computer . ?type))))))
+         #{'(job (Bitdiddle Ben) (computer wizard))
+           '(job (Hacker Alyssa P) (computer programmer))
+           '(job (Fect Cy D) (computer programmer))
+           '(job (Tweakit Lem E) (computer technician))
+           '(job (Reasoner Louis) (computer programmer trainee))}))
+  (is (= (into #{}
+               (qeval
+                (quasiquote
+                 (~@facts-1
+                  (and (job ?person (computer programmer))
+                       (address ?person ?where))))))
+         #{'(and (job (Hacker Alyssa P) (computer programmer))
+                 (address (Hacker Alyssa P) (Cambridge (Mass Ave) 78)))
+           '(and (job (Fect Cy D) (computer programmer))
+                 (address (Fect Cy D) (Cambridge (Ames Street) 3)))}))
+  (is (= (into #{}
+               (qeval
+                (quasiquote
+                 (~@facts-1
+                  (or (supervisor ?x (Bitdiddle Ben))
+                      (supervisor ?x (Hacker Alyssa P)))))))
+         #{'(or (supervisor (Hacker Alyssa P) (Bitdiddle Ben))
+                (supervisor (Hacker Alyssa P) (Hacker Alyssa P)))
+           '(or (supervisor (Fect Cy D) (Bitdiddle Ben))
+                (supervisor (Fect Cy D) (Hacker Alyssa P)))
+           '(or (supervisor (Tweakit Lem E) (Bitdiddle Ben))
+                (supervisor (Tweakit Lem E) (Hacker Alyssa P)))
+           '(or (supervisor (Reasoner Louis) (Bitdiddle Ben))
+                (supervisor (Reasoner Louis) (Hacker Alyssa P)))}))
+  (is (= (into #{}
+               (qeval
+                (quasiquote
+                 (~@facts-1
+                  (and (supervisor ?x (Bitdiddle Ben))
+                       (not (job ?x (computer programmer))))))))
+         #{'(and (supervisor (Tweakit Lem E) (Bitdiddle Ben))
+                 (not (job (Tweakit Lem E) (computer programmer))))}))
+  (is (= (into #{}
+               (qeval
+                (quasiquote
+                 (~@facts-1
+                  (and (salary ?person ?amount)
+                       (lisp-value > ?amount 30000))))))
+         #{'(and (salary (Scrooge Eben) 75000)
+                 (lisp-value > 75000 30000))
+           '(and (salary (Warbucks Oliver) 150000)
+                 (lisp-value > 150000 30000))
+           '(and (salary (Fect Cy D) 35000)
+                 (lisp-value > 35000 30000))
+           '(and (salary (Hacker Alyssa P) 40000)
+                 (lisp-value > 40000 30000))
+           '(and (salary (Bitdiddle Ben) 60000)
+                 (lisp-value > 60000 30000))}))
+  (is (= (into #{}
+               (qeval
+                (quasiquote
+                 (~@facts-1
+                  (assert!
+                   (rule (lives-near ?person-1 ?person-2)
+                         (and (address ?person-1 (?town . ?rest-1))
+                              (address ?person-2 (?town . ?rest-2))
+                              (not (same ?person-1 ?person-2)))))
+                  (assert! (rule (same ?x ?x)))
+                  (lives-near ?x (Bitdiddle Ben))))))
+         #{'(lives-near (Reasoner Louis) (Bitdiddle Ben))
+           '(lives-near (Aull DeWitt) (Bitdiddle Ben))}))
+  (is (= (into #{}
+               (qeval
+                (quasiquote
+                 (~@facts-1
+                  (assert!
+                   (rule
+                    (outranked-by ?staff-person ?boss)
+                    (or (supervisor ?staff-person ?boss)
+                        (and (supervisor ?staff-person ?middle-manager)
+                             (outranked-by ?middle-manager ?boss)))))
+                  (outranked-by (Hacker Alyssa P) ?who)))))
+         #{'(outranked-by (Hacker Alyssa P) (Bitdiddle Ben))
+           '(outranked-by (Hacker Alyssa P) (Warbucks Oliver))})))
