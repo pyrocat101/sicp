@@ -1513,8 +1513,6 @@
 (defn constant-symbol?
   [exp] (and (symbol? exp) (nil? (:logic-var (meta exp)))))
 
-(def contract-question-mark identity)
-
 ;; TODO: Stream operations
 
 (defn my-interleave
@@ -1864,3 +1862,11 @@
                          (administration big wheel)))))
 
 ;; Exercise 4.70
+
+;; When we call `(cons-stream assertion THE-ASSERTIONS)`, the second
+;; argument will not be immediately evaluated. Therefore the `set!`
+;; expression will make `THE-ASSERTIONS` point to itself, leading to an
+;; infinite loop. The purpose of `let` is to force the evaluation of
+;; `THE-ASSERTIONS` and bind its value to `old-assertions`.
+
+;; Exercise 4.71
