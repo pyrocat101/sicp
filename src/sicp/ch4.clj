@@ -1517,6 +1517,12 @@
 
 ;; TODO: Stream operations
 
+(defn my-interleave
+  [s1 s2]
+  (if (empty? s1) s2
+      (lazy-seq
+       (cons (first s1) (my-interleave s2 (rest s1))))))
+
 ;; Maintaining the Data Base
 
 (defn indexable?
@@ -1619,10 +1625,11 @@
                       (tree-walk v)
                       false))
                   (seq? e)
-                  (or (tree-walk (first e))
-                      (tree-walk (rest  e)))
-                  :else
-                  false))]
+                  (if (empty? e)
+                    false
+                    (or (tree-walk (first e))
+                        (tree-walk (rest  e))))
+                  :else false))]
     (tree-walk exp)))
 
 (defn extend-if-possible
@@ -1637,19 +1644,23 @@
 
 (defn rename-variables-in
   [rule]
-  (letfn
-      [(tree-walk [exp]
-         (cond (logic-var? exp) (make-logic-var (gensym exp))
-               (seq? exp) (cons (tree-walk (first exp))
-                                (tree-walk (rest  exp)))
+  (let [rule-app-id (gensym "")]
+    (letfn [(tree-walk [exp]
+              (cond
+               (logic-var? exp) (make-logic-var
+                                 (symbol (str exp \- rule-app-id)))
+               (seq? exp) (if (empty? exp)
+                            exp
+                            (cons (tree-walk (first exp))
+                                  (tree-walk (rest  exp))))
                :else exp))]
-    (tree-walk rule)))
+    (tree-walk rule))))
 
 (defn apply-a-rule
   [rule query-pattern query-frame qeval]
   (let [clean-rule   (rename-variables-in rule)
         unify-result (unify-match query-pattern
-                                  (rule-conclusion rule)
+                                  (rule-conclusion clean-rule)
                                   query-frame)]
     (if (= unify-result :failed)
       ()
@@ -1681,12 +1692,11 @@
     (= '. (first dat))
     (recur pat (second dat) frame)
     :else
-    (recur
-     (rest pat)
-     (rest dat)
-     (pattern-match (first pat)
-                    (first dat)
-                    frame)))
+    (recur (rest pat)
+           (rest dat)
+           (pattern-match (first pat)
+                          (first dat)
+                          frame)))
    :else :failed))
 
 (defn extend-if-consistent
@@ -1734,7 +1744,7 @@
   [disjuncts frames qeval]
   (if (empty? disjuncts)
     ()
-    (interleave
+    (my-interleave
      (qeval (first disjuncts) frames)
      (qeval-disjoin (rest disjuncts) frames qeval))))
 
@@ -1742,7 +1752,7 @@
 
 (defn qeval-negate
   [[negated-query & _] frames qeval]
-  (filter #(empty? (qeval negated-query (list %))) frames))
+  (doall (filter #(empty? (qeval negated-query (list %))) frames)))
 
 (declare instantiate)
 
@@ -1776,18 +1786,19 @@
                  (recur val)
                  (unbound-var-handler exp frame))
                (seq? exp)
-               (if (empty? exp)
-                 exp
-                 (cons (copy (first exp)) (copy (rest exp))))
-               :else
-               exp))]
+               ;; handle dotted list
+               (cond (empty? exp) exp
+                     (= '. (first exp)) (copy (second exp))
+                     :else (cons (copy (first exp))
+                                 (copy (rest  exp))))
+               :else exp))]
     (copy exp)))
 
 (defn make-qeval
   [special-forms]
   (letfn [(qeval [[op & args :as query] frames]
             (if-let [qproc (get special-forms (keyword op))]
-              (qproc args frames)
+              (qproc args frames qeval)
               (simple-query query frames qeval)))
           (driver-loop [queries result]
             (if (empty? queries)
@@ -1799,7 +1810,7 @@
                     (recur (rest queries) :ok))
                   (do
                     (recur (rest queries)
-                           (map #(instantiate q % identity)
+                           (map #(instantiate q % (fn [v f] v))
                                 (qeval q '({})))))))))]
     (fn [queries]
       (binding [*assertions* (atom {})
@@ -1807,5 +1818,49 @@
         (driver-loop queries nil)))))
 
 (def qeval (make-qeval qeval-basic-special-forms))
+
+(def facts-1
+  "Facts about Microshaft, `qeval` style"
+  '((assert! (address (Bitdiddle Ben) (Slumerville (Ridge Road) 10)))
+    (assert! (job (Bitdiddle Ben) (computer wizard)))
+    (assert! (salary (Bitdiddle Ben) 60000))
+    (assert! (address (Hacker Alyssa P) (Cambridge (Mass Ave) 78)))
+    (assert! (job (Hacker Alyssa P) (computer programmer)))
+    (assert! (salary (Hacker Alyssa P) 40000))
+    (assert! (supervisor (Hacker Alyssa P) (Bitdiddle Ben)))
+    (assert! (address (Fect Cy D) (Cambridge (Ames Street) 3)))
+    (assert! (job (Fect Cy D) (computer programmer)))
+    (assert! (salary (Fect Cy D) 35000))
+    (assert! (supervisor (Fect Cy D) (Bitdiddle Ben)))
+    (assert! (address (Tweakit Lem E) (Boston (Bay State Road) 22)))
+    (assert! (job (Tweakit Lem E) (computer technician)))
+    (assert! (salary (Tweakit Lem E) 25000))
+    (assert! (supervisor (Tweakit Lem E) (Bitdiddle Ben)))
+    (assert! (address (Reasoner Louis) (Slumerville (Pine Tree Road) 80)))
+    (assert! (job (Reasoner Louis) (computer programmer trainee)))
+    (assert! (salary (Reasoner Louis) 30000))
+    (assert! (supervisor (Reasoner Louis) (Hacker Alyssa P)))
+    (assert! (supervisor (Bitdiddle Ben) (Warbucks Oliver)))
+    (assert! (address (Warbucks Oliver) (Swellesley (Top Heap Road))))
+    (assert! (job (Warbucks Oliver) (administration big wheel)))
+    (assert! (salary (Warbucks Oliver) 150000))
+    (assert! (address (Scrooge Eben) (Weston (Shady Lane) 10)))
+    (assert! (job (Scrooge Eben) (accounting chief accountant)))
+    (assert! (salary (Scrooge Eben) 75000))
+    (assert! (supervisor (Scrooge Eben) (Warbucks Oliver)))
+    (assert! (address (Cratchet Robert) (Allston (N Harvard Street) 16)))
+    (assert! (job (Cratchet Robert) (accounting scrivener)))
+    (assert! (salary (Cratchet Robert) 18000))
+    (assert! (supervisor (Cratchet Robert) (Scrooge Eben)))
+    (assert! (address (Aull DeWitt) (Slumerville (Onion Square) 5)))
+    (assert! (job (Aull DeWitt) (administration secretary)))
+    (assert! (salary (Aull DeWitt) 25000))
+    (assert! (supervisor (Aull DeWitt) (Warbucks Oliver)))
+    (assert! (can-do-job (computer wizard) (computer programmer)))
+    (assert! (can-do-job (computer wizard) (computer technician)))
+    (assert! (can-do-job (computer programmer)
+                         (computer programmer trainee)))
+    (assert! (can-do-job (administration secretary)
+                         (administration big wheel)))))
 
 ;; Exercise 4.70
