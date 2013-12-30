@@ -1,8 +1,8 @@
 (ns sicp.ch4_test
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude (==))
   (:use [clojure.test]
-        [sicp.utils :only [quasiquote]]
-        [clojure.core.logic :exclude [is]]
+        [sicp.utils :only (quasiquote)]
+        [clojure.core.logic :exclude (is)]
         [clojure.core.logic.pldb]
         [sicp.ch4]))
 
@@ -273,8 +273,8 @@
                     pairs))))
        env
        (fn [value fail] (is (= value '((8 35)
-                                       (3 110)
-                                       (3 20)))))
+                                      (3 110)
+                                      (3 20)))))
        fail))))
 
 (deftest test-special-require-amb-eval

@@ -1,7 +1,7 @@
 (ns sicp.ch2_test
-  (:require [clojure.test :refer :all]
-            [sicp.ch2 :refer :all]
-            [sicp.utils :refer (≈)]))
+  (:use [clojure.test]
+        [sicp.ch2]
+        [sicp.utils :only (≈ atan2)]))
 
 (deftest test-rat
   (is (= "-1/2"
@@ -14,13 +14,13 @@
            (make-segment (make-point 0 0)
                          (make-point 2 2)))))))
 
-(deftest test-cons'-car'-cdr'
-  (is (= :x (car' (cons' :x :y))))
-  (is (= :y (cdr' (cons' :x :y)))))
+(deftest test-cons-car-cdr-1
+  (is (= :x (car-1 (cons-1 :x :y))))
+  (is (= :y (cdr-1 (cons-1 :x :y)))))
 
-(deftest test-cons''-car''-cdr''
-  (is (= 4 (car'' (cons'' 4 5))))
-  (is (= 5 (cdr'' (cons'' 4 5)))))
+(deftest test-cons-car-cdr-2
+  (is (= 4 (car-2 (cons-2 4 5))))
+  (is (= 5 (cdr-2 (cons-2 4 5)))))
 
 (deftest test-sub-interval
   (is (= [-3 3]
@@ -35,10 +35,10 @@
   (is (= '(34)
          (last-pair (list 23 72 149 34)))))
 
-(deftest test-reverse'
-  (is (= '() (reverse' '())))
+(deftest test-reverse-1
+  (is (= '() (reverse-1 '())))
   (let [l (list 1 4 9 16 25)]
-    (is (= (reverse l) (reverse' l)))))
+    (is (= (reverse l) (reverse-1 l)))))
 
 (deftest test-change-coins
   (is (= 292
@@ -82,13 +82,13 @@
   (is (= '((1 2 3) (1 2) (1 3) (1) (2 3) (2) (3) ())
          (subsets '(1 2 3)))))
 
-(deftest test-map'-append'-length'
+(deftest test-map-append-length-1
   (is (= '(1 4 9 16 25)
-         (map' square '(1 2 3 4 5))))
+         (map-1 square '(1 2 3 4 5))))
   (is (= '(1 2 3 4)
-         (append' '(1 2) '(3 4))))
+         (append-1 '(1 2) '(3 4))))
   (is (= 5
-         (length' '(1 2 3 4 5)))))
+         (length-1 '(1 2 3 4 5)))))
 
 (deftest test-horner-eval
   (is (= 79 (horner-eval 2 (list 1 3 0 5 0 1)))))
@@ -170,14 +170,14 @@
 
 (deftest test-huffman-coding
   (let
-    [sample-tree (make-code-tree
-                  (make-leaf :A 4)
-                  (make-code-tree
-                   (make-leaf :B 2)
-                   (make-code-tree
-                    (make-leaf :D 1)
-                    (make-leaf :C 1))))
-     sample-message '(0 1 1 0 0 1 0 1 0 1 1 1 0)]
+      [sample-tree (make-code-tree
+                    (make-leaf :A 4)
+                    (make-code-tree
+                     (make-leaf :B 2)
+                     (make-code-tree
+                      (make-leaf :D 1)
+                      (make-leaf :C 1))))
+       sample-message '(0 1 1 0 0 1 0 1 0 1 1 1 0)]
     (is (= '(:A :D :A :B :B :C :A)
            (decode sample-message sample-tree)))
     (is (= sample-message
@@ -187,9 +187,9 @@
 
 (deftest test-generate-huffman-tree
   (let
-    [sample-tree (generate-huffman-tree
-                  '((:A 4) (:B 2) (:D 1) (:C 1)))
-     sample-message '(0 1 1 0 0 1 0 1 0 1 1 1 0)]
+      [sample-tree (generate-huffman-tree
+                    '((:A 4) (:B 2) (:D 1) (:C 1)))
+       sample-message '(0 1 1 0 0 1 0 1 0 1 1 1 0)]
     (is (= sample-message
            (encode
             (decode sample-message sample-tree)
@@ -203,9 +203,9 @@
 
 (deftest test-make-from-mag-ang-msg-passing
   (let
-    [a (Math/atan2 3 4)
-     x (make-from-mag-ang-msg-passing 5 a)
-     apply apply-generic-msg-passing]
+      [a (atan2 3 4)
+       x (make-from-mag-ang-msg-passing 5 a)
+       apply apply-generic-msg-passing]
     (is (= 5 (apply :magnitude x)))
     (is (≈ a (apply :angle     x)))
     (is (≈ 4 (apply :real-part x)))

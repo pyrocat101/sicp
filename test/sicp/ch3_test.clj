@@ -1,9 +1,7 @@
 (ns sicp.ch3_test
-  (:require [clojure.contrib.generic.math-functions
-             :refer (sqrt sin abs sqr log)]
-            [clojure.test :refer :all]
-            [sicp.ch3 :refer :all]
-            [sicp.utils :refer (≈)]))
+  (:use [clojure.test]
+        [sicp.utils]
+        [sicp.ch3]))
 
 (deftest test-make-accumulator
   (let [acc (make-accumulator 5)]
@@ -41,9 +39,9 @@
 
 (deftest test-stream-map-ext
   (let
-    [one-to-three  (stream-enumerate-interval 1 3)
-     two-to-four   (stream-enumerate-interval 2 4)
-     three-to-five (stream-enumerate-interval 3 5)]
+      [one-to-three  (stream-enumerate-interval 1 3)
+       two-to-four   (stream-enumerate-interval 2 4)
+       three-to-five (stream-enumerate-interval 3 5)]
     (is (= "(6 9 12)"
            (display-stream
             (stream-map-ext +
@@ -78,10 +76,10 @@
 
 (deftest test-mul-series
   (let
-    [result
-     (map +
-          (mul-series cosine-series cosine-series)
-          (mul-series sine-series   sine-series))]
+      [result
+       (map +
+            (mul-series cosine-series cosine-series)
+            (mul-series sine-series   sine-series))]
     (is (= (first result) 1))
     (is (every? zero? (->> result (drop 1) (take 100))))))
 
@@ -96,12 +94,12 @@
 
 (deftest test-ln2-converge
   (let
-    [ln2   (log 2)
-     base  (nth ln2-stream 5)
-     euler (nth (euler-transform ln2-stream) 5)
-     acc   (nth (accelerated-sequence euler-transform
-                                      ln2-stream)
-                5)]
+      [ln2   (log 2)
+       base  (nth ln2-stream 5)
+       euler (nth (euler-transform ln2-stream) 5)
+       acc   (nth (accelerated-sequence euler-transform
+                                        ln2-stream)
+                  5)]
     (is (> (abs (- base  ln2))
            (abs (- euler ln2))
            (abs (- acc   ln2))))))
@@ -112,7 +110,7 @@
 
 (deftest test-pythagorean-triples
   (let
-    [l (take 4 pythagorean-triples)]
+      [l (take 4 pythagorean-triples)]
     (is (every? (fn [[a b c]]
                   (and (< a b)
                        (=  (+ (sqr a) (sqr b))
@@ -131,7 +129,7 @@
 
 (deftest test-zero-crossings
   (let
-    [sense-data (map sin (iterate #(+ % 1.5) 0))]
+      [sense-data (map sin (iterate #(+ % 1.5) 0))]
     (is (= '(0 1 1 -1 -1)
            (take 5 (zero-crossings sense-data))))))
 

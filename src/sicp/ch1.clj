@@ -4,11 +4,10 @@
 ;;; Namespace and dependencies
 
 (ns sicp.ch1
-  (:use [clojure.math.numeric-tower :only (gcd expt)]))
+  (:use [sicp.utils]))
 
 (defn square [x] (expt x 2))
 (defn cube [x] (expt x 3))
-(defn log [x] (Math/log x))
 (defn average [& lst] (/ (reduce + lst) (count lst)))
 
 ;;; Newton Integral
@@ -31,8 +30,8 @@
         y    (fn [k] (f (+ a (* k h))))
         next (fn [k] (+ k 2))
         term (fn [n] (+ (y (dec n))
-                        (* 4 (y n))
-                        (y (inc n))))]
+                       (* 4 (y n))
+                       (y (inc n))))]
     (* (/ h 3) (sum term 1 next (dec n)))))
 
 ;;; Exercise 1.30
@@ -122,29 +121,25 @@
 
 (defn fixed-point [f first-guess]
   (let [tolerance 0.00001
-        close-enough? (fn [v1 v2]
-                        (< (Math/abs (- v1 v2))
-                           tolerance))
-        try' (fn ! [guess]
-               (let [next (f guess)]
-                 (if (close-enough? guess next)
-                   next
-                   (! next))))]
-    (try' first-guess)))
+        close-enough? #(≈ %1 %2 tolerance)]
+    (loop [guess first-guess]
+      (let [next (f guess)]
+        (if (close-enough? guess next)
+          next
+          (recur next))))))
 
 ;;; Exercise 1.36
 
-(defn fixed-point' [f first-guess]
+(defn fixed-point-1 [f first-guess]
   (let [tolerance 0.00001
         close-enough? (fn [v1 v2]
-                        (< (Math/abs (- v1 v2))
-                           tolerance))
-        try' (fn ! [guess steps]
-               (let [next (f guess)]
-                 (if (close-enough? guess next)
-                   (do (println "steps:" steps) next)
-                   (! next (inc steps)))))]
-    (try' first-guess 0)))
+                        (< (abs (- v1 v2))
+                           tolerance))]
+    (loop [guess first-guess steps 0]
+      (let [next (f guess)]
+        (if (close-enough? guess next)
+          next
+          (recur next (inc steps)))))))
 
 ;;; Exercise 1.37
 
@@ -152,10 +147,10 @@
 
 (defn cont-frac [n d k]
   (letfn [(f [i]
-             (let [next (inc i)]
-               (if (> i k)
-                 0
-                 (/ (n i) (+ (d i) (f next))))))]
+            (let [next (inc i)]
+              (if (> i k)
+                0
+                (/ (n i) (+ (d i) (f next))))))]
     (f 1)))
 
 ;;; b)
@@ -174,9 +169,9 @@
 (def natural-logarithm
   (letfn [(n [_] 1.0)
           (d [i]
-             (if (= 0 (mod (inc i) 3))
-               (* 2 (/ (inc i) 3))
-               1))]
+            (if (= 0 (mod (inc i) 3))
+              (* 2 (/ (inc i) 3))
+              1))]
     (+ 2 (iterative-cont-frac n d 20))))
 
 ;;; Exercise 1.40
@@ -197,9 +192,9 @@
 
 (defn cubic [a b c]
   (fn [x] (+ (cube x)
-             (* a (square x))
-             (* b x)
-             c)))
+            (* a (square x))
+            (* b x)
+            c)))
 
 ;;; Exercise 1.41
 
@@ -238,7 +233,7 @@
 
 ;;; damp-times is lg(n)
 
-(defn lg [n] (Math/ceil (/ (log n) (log 2))))
+(defn lg [n] (ceil (/ (log n) (log 2))))
 
 (defn nth-root [n x]
   (let [damp-times (int (lg n))]
@@ -256,7 +251,7 @@
 
 (defn fixed-point-improved [f first-guess]
   (letfn [(good-enough? [v1 v2]
-                        (< (Math/abs (- v1 v2))
-                           0.00001))
+            (< (abs (- v1 v2))
+               0.00001))
           (improve [guess] (f guess))]
     ((iterative-improve good-enough? improve) first-guess)))

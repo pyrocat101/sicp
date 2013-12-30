@@ -4,10 +4,10 @@
 ;;; Namespace and dependencies
 
 (ns sicp.ch4
-  (:refer-clojure :exclude [==])
+  (:refer-clojure :exclude (==))
   (:require [clojure.math.combinatorics :as combo]
             [clojure.core.logic.fd :as fd])
-  (:use [sicp.utils :only [quasiquote]]
+  (:use [sicp.utils :only (quasiquote)]
         [clojure.core.logic]
         [clojure.core.logic.pldb :rename {db-rel defrel}]))
 
@@ -1751,6 +1751,7 @@
 (defn qeval-conjoin
   [conjuncts frames qeval]
   (if (empty? conjuncts)
+    frames
     (recur (rest conjuncts)
            (qeval (first conjuncts) frames)
            qeval)))

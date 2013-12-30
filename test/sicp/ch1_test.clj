@@ -1,7 +1,7 @@
 (ns sicp.ch1_test
-  (:require [clojure.test :refer :all]
-            [sicp.ch1 :refer :all]
-            [sicp.utils :refer (≈)]))
+  (:use [clojure.test]
+        [sicp.ch1]
+        [sicp.utils]))
 
 (deftest test-newton-integral
   (is (≈ 0.25
@@ -30,12 +30,12 @@
          (fixed-point #(+ 1 (/ 1 %)) 1.0)
          0.001)))
 
-(deftest test-fixed-point'
+(deftest test-fixed-point-1
   (is (≈ 4.5555
-         (fixed-point' #(/ (log 1000) (log %)) 4)
+         (fixed-point-1 #(/ (log 1000) (log %)) 4)
          0.0001))
   (is (≈ 4.5555
-         (fixed-point'
+         (fixed-point-1
           #(average % (/ (log 1000) (log %))) 4)
          0.0001)))
 
@@ -75,11 +75,11 @@
   (is (≈ 25 ((repeated-smooth square 10) 5))))
 
 (deftest test-damped-nth-root
-  (is (≈ (Math/sqrt 2)
+  (is (≈ (sqrt 2)
          (damped-nth-root 2 2 1))))
 
 (deftest test-nth-root
-  (is (≈ 3 (nth-root 10 (Math/pow 3 10)))))
+  (is (≈ 3 (nth-root 10 (pow 3 10)))))
 
 (deftest test-fixed-point-improved
   (is (≈ 1.618

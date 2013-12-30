@@ -4,41 +4,8 @@
 ;;; Namespace and dependencies
 
 (ns sicp.ch3
-  (:require [clojure.contrib.generic.math-functions
-             :refer (abs sqr sin pow)]
-            [clojure.string :as string]
-            [clojure.walk :as walk]))
-
-(defn ^boolean divisible?
-  [^long dividend ^long divisor]
-  (zero? (rem dividend divisor)))
-
-;;; https://gist.github.com/michalmarczyk/486880
-
-(defmacro letrec [bindings & body]
-  (let [bcnt (quot (count bindings) 2)
-        arrs (gensym "bindings_array")
-        arrv `(make-array Object ~bcnt)
-        bprs (partition 2 bindings)
-        bssl (map first bprs)
-        bsss (set bssl)
-        bexs (map second bprs)
-        arrm (zipmap bssl (range bcnt))
-        btes (map #(walk/prewalk (fn [f]
-                                   (if (bsss f)
-                                     `(aget ~arrs ~(arrm f))
-                                     f))
-                                 %)
-                  bexs)]
-    `(let [~arrs ~arrv]
-       ~@(map (fn [s e]
-                `(aset ~arrs ~(arrm s) ~e))
-              bssl
-              btes)
-       (let [~@(mapcat (fn [s]
-                         [s `(aget ~arrs ~(arrm s))])
-                       bssl)]
-         ~@body))))
+  (:require [clojure.string :as string])
+  (:use [sicp.utils]))
 
 ;;; Exercise 3.1
 
@@ -61,28 +28,28 @@
 
 (defn make-account [balance password]
   (let
-    [balance (atom balance)
-     withdraw
-     (fn [amount]
-       (if (>= @balance amount)
-         (do
-           (swap! balance - amount)
-           @balance)
-         "Insufficient funds"))
-     desposit
-     (fn [amount]
-       (swap! balance + amount)
-       @balance)
-     dispatch
-     (fn [p m]
-       (if-not (= p password)
-         (fn [& args] "Incorrect password")
-         (cond (= m :withdraw) withdraw
-               (= m :deposit)  desposit
-               :else
-               (fn [& args]
-                 (print-str
-                  "Unknown request -- MAKE-ACCOUNT" m)))))]
+      [balance (atom balance)
+       withdraw
+       (fn [amount]
+         (if (>= @balance amount)
+           (do
+             (swap! balance - amount)
+             @balance)
+           "Insufficient funds"))
+       desposit
+       (fn [amount]
+         (swap! balance + amount)
+         @balance)
+       dispatch
+       (fn [p m]
+         (if-not (= p password)
+           (fn [& args] "Incorrect password")
+           (cond (= m :withdraw) withdraw
+                 (= m :deposit)  desposit
+                 :else
+                 (fn [& args]
+                   (print-str
+                    "Unknown request -- MAKE-ACCOUNT" m)))))]
     dispatch))
 
 ;;; Exercise 3.5
@@ -104,7 +71,7 @@
 (defn mento-carlo-estimate-pi [^long times]
   (/ (estimate-integral
       (fn [x y] (>= 9 (+ (sqr (- x 5))
-                         (sqr (- y 7)))))
+                        (sqr (- y 7)))))
       {:x1 2, :x2 8, :y1 4, :y2 10}
       times)
      9))
@@ -338,7 +305,7 @@
   (lazy-seq
    (cons 0 (integrate-series cosine-series))))
 
-; Exercise 3.60
+                                        ; Exercise 3.60
 
 (defn mul-series [s1 s2]
   (lazy-seq
@@ -508,11 +475,11 @@
 
 (def pairs-sorted-2
   (let
-    [s (filter
-        #(and (divisible? % 2)
-              (divisible? % 3)
-              (divisible? % 5))
-        integers)]
+      [s (filter
+          #(and (divisible? % 2)
+                (divisible? % 3)
+                (divisible? % 5))
+          integers)]
     (weighted-pairs s
                     s
                     (fn [[i j]]
@@ -522,9 +489,9 @@
 
 (def ramanujan
   (let
-    [f (fn [[i j]] (+ (* i i i) (* j j j)))
-     sorted (weighted-pairs integers integers f)
-     cube-sum (map f sorted)]
+      [f (fn [[i j]] (+ (* i i i) (* j j j)))
+       sorted (weighted-pairs integers integers f)
+       cube-sum (map f sorted)]
     (->> (map vector cube-sum (rest cube-sum))
          (filter (fn [[x y]] (= x y)))
          (map first))))
@@ -546,8 +513,8 @@
 (defn make-zero-crossings
   [input-stream last-avpt last-value]
   (let
-    [value (first input-stream)
-     avpt  (/ (+ value last-value) 2)]
+      [value (first input-stream)
+       avpt  (/ (+ value last-value) 2)]
     (lazy-seq
      (cons (sign-change-detector avpt last-avpt)
            (make-zero-crossings (rest input-stream)
@@ -573,12 +540,12 @@
 (defn mento-carlo
   [experiment-stream passed failed]
   (letfn
-    [(next
-      [passed failed]
-      (lazy-seq
-       (cons (/ passed (+ passed failed))
-             (mento-carlo
-              (rest experiment-stream) passed failed))))]
+      [(next
+         [passed failed]
+         (lazy-seq
+          (cons (/ passed (+ passed failed))
+                (mento-carlo
+                 (rest experiment-stream) passed failed))))]
     (if (first experiment-stream)
       (next (inc passed) failed)
       (next passed (inc failed)))))
@@ -586,18 +553,18 @@
 (defn estimate-integral-stream
   [P {:keys [x1 x2 y1 y2]}]
   (let
-    [x-random-stream
-     (repeatedly #(+ x1 (* (rand) (- x2 x1))))
-     y-random-stream
-     (repeatedly #(+ y1 (* (rand) (- y2 y1))))
-     integral-stream
-     (map #(P %1 %2) x-random-stream y-random-stream)]
+      [x-random-stream
+       (repeatedly #(+ x1 (* (rand) (- x2 x1))))
+       y-random-stream
+       (repeatedly #(+ y1 (* (rand) (- y2 y1))))
+       integral-stream
+       (map #(P %1 %2) x-random-stream y-random-stream)]
     (map #(double (* % (- y2 y1) (- x2 x1)))
          (mento-carlo integral-stream 0 0))))
 
 (defn estimate-pi-integral-stream [times]
   (/ (nth (estimate-integral-stream
            (fn [x y] (>= 9 (+ (sqr (- x 5))
-                              (sqr (- y 7)))))
+                             (sqr (- y 7)))))
            {:x1 2, :x2 8, :y1 4, :y2 10})
           times) 9))
