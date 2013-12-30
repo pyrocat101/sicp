@@ -407,9 +407,7 @@
                        (if (empty? bindings)
                          body
                          (let [[[k v] & next] bindings]
-                           (quasiquote ((set! ~k ~v) ~@(! next)))
-                           #_(cons (list 'set! k v)
-                                   (! next)))))
+                           (quasiquote ((set! ~k ~v) ~@(! next))))))
                      bindings)))))
 
 (defn eval-letrec
@@ -1463,8 +1461,8 @@
 
 ;;; The Implementation of Query System
 
-(def ^:dynamic ^:private *assertions*)
-(def ^:dynamic ^:private *rules*)
+(def ^:dynamic ^:private *assertions* (atom {}))
+(def ^:dynamic ^:private *rules* (atom {}))
 
 ;; Query Syntax Procedures
 
@@ -1513,13 +1511,33 @@
 (defn constant-symbol?
   [exp] (and (symbol? exp) (nil? (:logic-var (meta exp)))))
 
-;; TODO: Stream operations
+;; Stream operations
 
-(defn my-interleave
-  [s1 s2]
-  (if (empty? s1) s2
-      (lazy-seq
-       (cons (first s1) (my-interleave s2 (rest s1))))))
+(defn stream-append-delayed
+  [s1 delayed-s2]
+  (lazy-seq
+   (if (empty? s1)
+     (force delayed-s2)
+     (cons (first s1) (stream-append-delayed (rest s1) delayed-s2)))))
+
+(defn interleave-delayed
+  [s1 delayed-s2]
+  (seq
+   (lazy-seq
+    (if (empty? s1)
+      (force delayed-s2)
+      (cons (first s1)
+            (interleave-delayed (force delayed-s2) (delay (rest s1))))))))
+
+(defn flatten-stream
+  [stream]
+  (if (empty? stream)
+    ()
+    (interleave-delayed
+     (first stream) (delay (flatten-stream (rest stream))))))
+
+(defn stream-flatmap
+  [proc s] (flatten-stream (map proc s)))
 
 ;; Maintaining the Data Base
 
@@ -1652,7 +1670,7 @@
                             (cons (tree-walk (first exp))
                                   (tree-walk (rest  exp))))
                :else exp))]
-    (tree-walk rule))))
+      (tree-walk rule))))
 
 (defn apply-a-rule
   [rule query-pattern query-frame qeval]
@@ -1667,8 +1685,8 @@
 
 (defn apply-rules
   [pattern frame qeval]
-  (mapcat #(apply-a-rule % pattern frame qeval)
-          (fetch-rules pattern frame)))
+  (stream-flatmap #(apply-a-rule % pattern frame qeval)
+                  (fetch-rules pattern frame)))
 
 ;; Finding assertions by Pattern Matching
 
@@ -1715,42 +1733,43 @@
   "Returns a stream of frames, each extending the given one by a
    data-base match of the give pattern."
   [pattern frame]
-  (mapcat #(check-an-assertion % pattern frame)
-          (fetch-assertions pattern frame)))
+  (stream-flatmap #(check-an-assertion % pattern frame)
+                  (fetch-assertions pattern frame)))
 
 ;; simple queries
 
-;; TODO: why delayed append
 (defn simple-query
   [query-pattern frames qeval]
-  (mapcat #(concat (find-assertions query-pattern %)
-                   (apply-rules query-pattern % qeval))
-          frames))
+  (stream-flatmap
+   #(stream-append-delayed
+     (find-assertions query-pattern %)
+     (delay (apply-rules query-pattern % qeval)))
+   frames))
 
 ;; compound queries
 
 (defn qeval-conjoin
   [conjuncts frames qeval]
   (if (empty? conjuncts)
-    frames
     (recur (rest conjuncts)
            (qeval (first conjuncts) frames)
            qeval)))
 
-;; TODO: why delayed interleave
 (defn qeval-disjoin
   [disjuncts frames qeval]
   (if (empty? disjuncts)
     ()
-    (my-interleave
+    (interleave-delayed
      (qeval (first disjuncts) frames)
-     (qeval-disjoin (rest disjuncts) frames qeval))))
+     (delay (qeval-disjoin (rest disjuncts) frames qeval)))))
 
 ;; filters
 
 (defn qeval-negate
   [[negated-query & _] frames qeval]
-  (doall (filter #(empty? (qeval negated-query (list %))) frames)))
+  (stream-flatmap
+   #(if (empty? (qeval negated-query (list %))) (list %) ())
+   frames))
 
 (declare instantiate)
 
@@ -1761,7 +1780,8 @@
           (error [v f]
             (throw (Exception.
                     (print-str "Unknown pat var -- LISP-VALUE" v))))]
-    (filter #(exec (instantiate call % error)) frames)))
+    (stream-flatmap
+     #(if (exec (instantiate call % error)) (list %) ()) frames)))
 
 (defn qeval-always-true [_ frames qeval] frames)
 
@@ -1815,7 +1835,8 @@
                 *rules*      (atom {})]
         (driver-loop queries nil)))))
 
-(def qeval (make-qeval qeval-basic-special-forms))
+(def qeval
+  (make-qeval qeval-basic-special-forms))
 
 (def facts-1
   "Facts about Microshaft, `qeval` style"
@@ -1870,3 +1891,143 @@
 ;; `THE-ASSERTIONS` and bind its value to `old-assertions`.
 
 ;; Exercise 4.71
+
+;; Using `delay` can postpone infinite loops in some cases, yielding
+;; some query result without falling into infinite loop immediately.
+;;
+;; For example, if we defined some recursive rule:
+;;
+;; (assert! (foo x))
+;; (assert! (rule (foo ?x) (foo ?x)))
+;;
+;; Then without `delay`, the query `(foo ?x)` will result in stack
+;; overflow error, as the application of rule `foo` is
+;; infinitely-recursive. On the other hand, the use of `delay` in
+;; `stream-append-delayed` in `simple-query`:
+;;
+;; (stream-append-delayed
+;;       (find-assertions query-pattern frame)
+;;       (delay (apply-rules query-pattern frame)))
+;;
+;; postponed the application of rule.
+
+;; Exercise 4.72
+
+;; We use `interleave` here to handle infinite streams. Without
+;; interleaving, if the first stream in `stream-flatmap` is an infinite
+;; stream, then the content of the second stream can never be reached.
+
+;; Exercise 4.73
+
+;; Because the query system will fall into infinite loop if the second
+;; argument of `flatten-stream` is an infinite stream. In that case, the
+;; evaluate of argument `(flatten-stream (stream-cdr stream))` will not
+;; terminate.
+
+;; Exercise 4.74
+
+(defn simple-flatten
+  [stream] (map first (filter (comp not empty?) stream)))
+
+(defn simple-stream-flatmap
+  [proc s] (simple-flatten (map proc s)))
+
+;; Exercise 4.75
+
+(defn uniquely-asserted
+  [[query & _] frames qeval]
+  (->> frames
+       (map #(qeval query (list %)))
+       (filter #(= (count %) 1))
+       (mapcat identity)))
+
+(def qeval-special-forms-with-unique
+  (assoc qeval-basic-special-forms
+    :unique uniquely-asserted))
+
+(def qeval-with-unique
+  (make-qeval qeval-special-forms-with-unique))
+
+;; Exercise 4.76
+
+(defn unify-frames
+  [f1 f2]
+  (loop [f1 (seq f1) f2 f2]
+    (if (empty? f1)
+      f2
+      (let [[var val] (first f1)
+            f2 (extend-if-possible var val f2)]
+        (if (= f2 :failed)
+          :failed
+          (recur (rest f1) f2))))))
+
+(defn intersect-frame-streams
+  [s1 s2]
+  (filter #(not= :failed %)
+          (for [f1 s1 f2 s2] (unify-frames f1 f2))))
+
+(defn qeval-conjoin-alt
+  [conjuncts frames qeval]
+  (loop [conjuncts conjuncts
+         result frames]
+    (if (empty? conjuncts)
+      result
+      (recur (rest conjuncts)
+             (intersect-frame-streams
+              result
+              (qeval (first conjuncts) frames))))))
+
+(def qeval-special-forms-with-alt-conjoin
+  (assoc qeval-basic-special-forms
+    :and qeval-conjoin-alt))
+
+(def qeval-with-alt-conjoin
+  (make-qeval qeval-special-forms-with-alt-conjoin))
+
+;; Caveats:
+;;
+;; This implementation of conjoin operation does not produce correct
+;; result given queries like this:
+;;
+;; (and (supervisor ?x (Bitdiddle Ben))
+;;      (not (job ?x (computer programmer))))
+;;
+;; And this:
+;;
+;; (and (salary ?person ?amount)
+;;      (lisp-value > ?amount 30000))
+;;
+;; The reason is that `not` and `lisp-value` serve as filters of
+;; possible result in the evaluation. In the original implementation,
+;; the frames produced by the first clause of `and` is fed into the
+;; subsequent clause, yielding correct result. Yet in this alternative
+;; conjoin, all clauses are fed with the same incoming frames. This
+;; quirk is tightly related to ``problem with `not`'' described in the
+;; book.
+
+;; Exercise 4.77
+
+;; The easiest and most intuitive way to solve this problem is to
+;; reorder the clauses in `and` query, placing `not` and `lisp-value`
+;; sub-queries at the end.
+
+(defn reorder-conjoin-clauses
+  [conjuncts]
+  (let [{x false y true}
+        (group-by #(let [op (first %)]
+                     (or (= op 'lisp-value)
+                         (= op 'not)))
+                  conjuncts)]
+    (concat x y)))
+
+(defn qeval-conjoin-filter-fix
+  [conjuncts frames qeval]
+  (let [conjuncts (reorder-conjoin-clauses conjuncts)]
+    (qeval-conjoin conjuncts frames qeval)))
+
+(def qeval-special-forms-with-filter-fix
+  (assoc qeval-basic-special-forms
+    :and qeval-conjoin-filter-fix))
+
+(def qeval-with-filter-fix
+  (make-qeval qeval-special-forms-with-filter-fix))
