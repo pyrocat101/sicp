@@ -7,6 +7,6 @@ of Computer Programs* (SICP). The code is written in Clojure.
 
 ## License
 
-[Creative Commons Attribution 3.0][cc]
+Copyright © 2013 Linjie Ding
 
-[cc]: http://creativecommons.org/licenses/by/3.0/
+Distributed under the Eclipse Public License, the same as Clojure.
